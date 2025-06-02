@@ -1167,7 +1167,7 @@ namespace TestConsole.Programs
             {
                 BetTypeID = 1,
                 Currency = "THB",
-                CreditAmount = 1.99,
+                CreditAmount = 1,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1247,35 +1247,35 @@ namespace TestConsole.Programs
             }
 
             targetReport.Win = request.CreditAmount;
-            targetReport.Balance = response.Balance;
-            targetReport.TimeStamp = response.Timestamp;
             targetReport.BalanceIndex = GetBalanceIndex(response.Balance);
             targetReport.TimeStampIndex = GetTimeStampIndex(response.Timestamp);
+            targetReport.Balance = response.Balance;
+            targetReport.TimeStamp = response.Timestamp;
         }
 
         private int GetTimeStampIndex(long timestamp)
         {
-            var report = _reports.FirstOrDefault(report => report.TimeStamp == timestamp);
+            var report = _reports.FirstOrDefault(report => report.TimeStamp == timestamp) ?? null;
             if (report != null)
             {
-                return _reports.LastOrDefault()?.TimeStampIndex + 1 ?? 0;
+                return report.TimeStampIndex;
             }
             else
             {
-                return report.TimeStampIndex;
+                return _reports.Count;
             }
         }
 
         private int GetBalanceIndex(double balance)
         {
-            var report = _reports.FirstOrDefault(report => report.Balance == balance);
+            var report = _reports.FirstOrDefault(report => report.Balance == balance) ?? null;
             if(report != null)
             {
-                return _reports.LastOrDefault()?.BalanceIndex + 1 ?? 0;
+                return report.BalanceIndex;
             }
             else
             {
-                return report.BalanceIndex;
+                return _reports.Count;
             }
         }
 
@@ -1589,7 +1589,7 @@ namespace TestConsole.Programs
             {
                 BetTypeID = 1,
                 Currency = "THB",
-                DebitAmount = 1.99,
+                DebitAmount = 1,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
