@@ -1,0 +1,2072 @@
+﻿using Newtonsoft.Json;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Security.Policy;
+using System.Text;
+using System.Text.Json;
+using System.Web;
+using TestConsole.Helper;
+
+namespace TestConsole.Programs
+{
+    public class Ezugi : IProgram
+    {
+        private readonly HttpHelper _httpHelper;
+        private int _operatorId = 11061001;
+        private long _previousRoundId;
+        private string _previousTransactionId;
+        private double _previousBalance;
+        private string _transactionToken;
+        private string _previousCreditTransactionId;
+        private string _baseUrl = "https://capi-uat-ezugi.techbodia.dev";
+        private List<BetReport> _reports = new List<BetReport>();
+
+        //private string _baseUrl = "https://localhost:7128";
+
+        public Ezugi()
+        {
+            _httpHelper = new HttpHelper();
+        }
+
+        public async Task TestFinancial()
+        {
+            Console.Clear();
+            var loginURL = await GetLoginUrl();
+            await RunProviderTest(loginURL);
+        }
+        private async Task RunProviderTest(string loginToken)
+        {
+            var awaitSecond = TimeSpan.FromSeconds(5);
+            var testSteps = new List<Func<string, Task<bool>>>
+           {
+               NormalAuthentication,
+               RepeatedAuthentication,
+               Debit,
+               RetryForDebit,
+               Rollback,
+               RetryForRollback,
+               RollbackBeforeDebit,
+               DebitAfterRollback,
+               Debit,
+               Credit,
+               RetryCredit,
+               DebitWith0Amount,
+               CreditWith0Amount1,
+               InsufficientFunds,
+               DebitWithWrongToken,
+               DebitWithUnknowUser,
+               DebitWithNegativeDebitAmount,
+               Debit,
+               RollbackWithWrongAmount,
+               Rollback,
+               Debit,
+               CreditWithoutDebitTransactionId,
+               Debit,
+               CreditWithDebitTransactionIdWhichNeverWasProcessed,
+               Debit,
+               Credit,
+               CreditWithDebitTransactionIdWhichAlreadyWasProcessed,
+               InvalidHash,
+               RequestWithNoHash,
+               DebitWithMissingMandatoryParametersInRequest,
+               InvalidCurrency,
+           };
+
+            foreach (var step in testSteps)
+            {
+                Console.WriteLine("---------------------------------------------------------------------");
+                Console.WriteLine($"Running test step: {step.Method.Name}");
+                if (!await step(loginToken))
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Test step {step.Method.Name} failed. Await for {awaitSecond}seconds");
+                    Console.ResetColor();
+                    return;
+                }
+                Console.WriteLine($"Test step {step.Method.Name} completed successfully.| Balance: {_previousBalance} Await for {awaitSecond}seconds");
+                _previousBalance = Get2DigitsAfterDecimalPoint(_previousBalance);
+                await Task.Delay(awaitSecond);
+            }
+        }
+
+        private async Task<bool> InvalidCurrency(string arg)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "USD",
+                DebitAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 24)
+            {
+                Console.WriteLine($"ErrorCode should be 24 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Request currency does not match session currency")
+            {
+                Console.WriteLine($"Error description should be: \"Request currency does not match session currency\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != 0)
+            {
+                Console.WriteLine($"Balance should be {0}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private async Task<bool> DebitWithMissingMandatoryParametersInRequest(string arg)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 1.99,
+                GameId = 1,
+                //OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 1)
+            {
+                Console.WriteLine($"ErrorCode should be 1 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Mandatory parameter missing from requestBody")
+            {
+                Console.WriteLine($"Error description should be: \"Mandatory parameter missing from requestBody\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.TransactionId != null || response.RoundId != 0 || response.Currency != null)
+            {
+                Console.WriteLine($"should responce with base response {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> RequestWithNoHash(string arg)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request, "asdfghjkjhgfdfghjfdsfsd", false);
+
+            if (response.ErrorCode != 1)
+            {
+                Console.WriteLine($"ErrorCode should be 1 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Invalid Hash")
+            {
+                Console.WriteLine($"Error description should be: \"Invalid Hash\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != 0)
+            {
+                Console.WriteLine($"Balance should be {0}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private async Task<bool> InvalidHash(string arg)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request, "asdfghjkjhgfdfghjfdsfsd");
+
+            if (response.ErrorCode != 1)
+            {
+                Console.WriteLine($"ErrorCode should be 1 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Invalid Hash")
+            {
+                Console.WriteLine($"Error description should be: \"Invalid Hash\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != 0)
+            {
+                Console.WriteLine($"Balance should be {0}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private double Get2DigitsAfterDecimalPoint(double amount)
+        {
+            var numberParts = amount.ToString().Split('.');
+            if (numberParts.Length == 2 && numberParts[1].Length >= 2)
+            {
+                numberParts[1] = numberParts[1].Substring(0, 2);
+            }
+            return Convert.ToDouble($"{numberParts[0]}.{numberParts[1]}");
+        }
+
+        private async Task<bool> CreditWithDebitTransactionIdWhichAlreadyWasProcessed(string arg)
+        {
+            var request = new ProviderSettleRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                CreditAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = "c" + (GetTransactionId()),
+                Uid = "2033sbons490854",
+                CreditIndex = "1|1",
+                DebitTransactionId = _previousTransactionId,
+                GameDataString = "",
+                IsEndRound = true,
+                ReturnReason = 0
+            };
+            _previousCreditTransactionId = request.TransactionId;
+
+            var response = await Settle(request);
+
+            if (response.ErrorCode != 1)
+            {
+                Console.WriteLine($"ErrorCode should be = 1 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Debit transaction already processed")
+            {
+                Console.WriteLine($"Error description should be: \"Debit transaction already processed\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private async Task<bool> CreditWithDebitTransactionIdWhichNeverWasProcessed(string arg)
+        {
+            var request = new ProviderSettleRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                CreditAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = "c" + (_previousTransactionId.Substring(1)),
+                Uid = "2033sbons490854",
+                CreditIndex = "1|1",
+                DebitTransactionId = _previousCreditTransactionId+"adf",
+                GameDataString = "",
+                IsEndRound = true,
+                ReturnReason = 0
+            };
+            _previousCreditTransactionId = request.TransactionId;
+
+            var response = await Settle(request);
+
+            if (response.ErrorCode != 9)
+            {
+                Console.WriteLine($"ErrorCode should be = 9 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Debit transaction ID not found")
+            {
+                Console.WriteLine($"Error description should be: \"Debit transaction ID not found\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private async Task<bool> CreditWithoutDebitTransactionId(string arg)
+        {
+            var request = new ProviderSettleRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                CreditAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = "c" + (_previousTransactionId.Substring(1)),
+                Uid = "2033sbons490854",
+                CreditIndex = "1|1",
+                DebitTransactionId = "",
+                GameDataString = "",
+                IsEndRound = true,
+                ReturnReason = 0
+            };
+            _previousCreditTransactionId = request.TransactionId;
+
+            var response = await Settle(request);
+
+            if (response.ErrorCode != 9)
+            {
+                Console.WriteLine($"ErrorCode should be = 9 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Debit transaction ID not found")
+            {
+                Console.WriteLine($"Error description should be: \"Debit transaction ID not found\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private async Task<bool> RollbackWithWrongAmount(string loginToken)
+        {
+            var request = new ProviderCancelRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                RollbackAmount = 2.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = _previousTransactionId,
+                Uid = "2033sbons490854",
+            };
+
+            var response = await Cancel(request);
+
+            if (response.ErrorCode != 1)
+            {
+                Console.WriteLine($"ErrorCode should be 1, response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Invalid amount")
+            {
+                Console.WriteLine($"Error description should be: \"Invalid amount\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<string> GetLoginUrl()
+        {
+            var url = $"{_baseUrl}/Provider/Login";
+            var jsonRequest = @"{
+                                	""User"": ""2033sbons490854"",
+                                	""ProcessLoginModel"": {
+                                		""GameId"": 0,
+                                		""GpId"": 1088,
+                                		""Lang"": 1,
+                                		""IsPlayForReal"": true,
+                                		""Device"": ""d"",
+                                		""IsApp"": false,
+                                		""IsLoginToSpecificGame"": false,
+                                		""GameCode"": """",
+                                		""GameHall"": """",
+                                		""HomeUrl"": """",
+                                		""BetCode"": """",
+                                		""Ip"": ""163.47.15.15"",
+                                		""MarsDomain"": ""lmd-uat.gaolitsai.com"",
+                                		""User Agent"": ""Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36""
+                                	},
+                                	""PlayerLoginInfoModel"": {
+                                		""CustomerId"": 490854,
+                                		""IsTest"": 0,
+                                		""PlayerInfo"": {
+                                			""CustomerID"": 490854,
+                                			""AccountID"": ""2033yy_QATestTHB"",
+                                			""Credit"": 0,
+                                			""Outstanding"": 0.0,
+                                			""CashBalance"": 0.0,
+                                			""Reward"": 0,
+                                			""Currency"": ""THB"",
+                                			""Status"": 0,
+                                			""DisplayName"": null,
+                                			""Ladder"": 0,
+                                			""Experience"": 0,
+                                			""LastLoginIP"": ""Mirana Ip"",
+                                			""LastLoginTime"": null,
+                                			""PasswordExpiryDate"": null,
+                                			""CanChangeDisplayName"": false,
+                                			""CanChangeLoginName"": false,
+                                			""FirstTimeSignOn"": false,
+                                			""ProductAvailable"": null,
+                                			""TableLimit"": 0,
+                                			""OddsStyle"": 0,
+                                			""WebId"": 2033
+                                		}
+                                	}
+                                }";
+            var response = await _httpHelper.PostAsync(url, jsonRequest);
+            var jsonDoc = JsonDocument.Parse(response);
+            if (jsonDoc.RootElement.TryGetProperty("result", out var resultElement))
+            {
+                var result = resultElement.GetString();
+                // Extract query part of the URL
+                var uri = new Uri(result);
+                var query = uri.Query;
+
+                // Parse query parameters
+                var queryParams = HttpUtility.ParseQueryString(query);
+                string token = queryParams["token"];
+
+                Console.WriteLine($"Login Token: {token}");
+                return token;
+            }
+            else
+            {
+                Console.WriteLine("Token not found in the response.");
+                return string.Empty;
+            }
+        }
+
+        
+
+        private async Task<bool> DebitWithNegativeDebitAmount(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = -1.90,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 1)
+            {
+                Console.WriteLine($"ErrorCode should be 1, response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Negative amount")
+            {
+                Console.WriteLine($"Error description should be: \"Negative amount\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> DebitWithUnknowUser(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 0,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons49085433",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 7)
+            {
+                Console.WriteLine($"ErrorCode should be 7, response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "User not found")
+            {
+                Console.WriteLine($"Error description should be: \"Token not found\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != 0)
+            {
+                Console.WriteLine($"Balance should be {0}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> DebitWithWrongToken(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 0,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken.Substring(0,loginToken.Length - 1) + "r",
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 6)
+            {
+                Console.WriteLine($"ErrorCode should be 6, response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Token not found")
+            {
+                Console.WriteLine($"Error description should be: \"Token not found\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != 0)
+            {
+                Console.WriteLine($"Balance should be {0}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> InsufficientFunds(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = _previousBalance + 1,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 3)
+            {
+                Console.WriteLine($"ErrorCode should be 3, response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Insufficient funds")
+            {
+                Console.WriteLine($"Error description should be: \"Insufficient funds\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> CreditWith0Amount1(string loginToken)
+        {
+            var request = new ProviderSettleRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                CreditAmount = 0,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = "c" + (_previousTransactionId.Substring(1)),
+                Uid = "2033sbons490854",
+                CreditIndex = "1|1",
+                DebitTransactionId = _previousTransactionId,
+                GameDataString = "",
+                IsEndRound = true,
+                ReturnReason = 0
+            };
+            _previousCreditTransactionId = request.TransactionId;
+
+            var response = await Settle(request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"ErrorCode should be = 0 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Completed successfully")
+            {
+                Console.WriteLine($"Error description should be: \"Completed successfully\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance + request.CreditAmount)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance + request.CreditAmount}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            _previousBalance = response.Balance;
+            Pass(); return true;
+        }
+
+        private async Task<bool> DebitWith0Amount(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 0,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance - request.DebitAmount)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance - request.DebitAmount}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            _previousBalance = response.Balance;
+            Pass(); return true;
+        }
+
+        private async Task<bool> RetryCredit(string loginToken)
+        {
+            var request = new ProviderSettleRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                CreditAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = _previousCreditTransactionId,
+                Uid = "2033sbons490854",
+                CreditIndex = "1|1",
+                DebitTransactionId = _previousTransactionId,
+                GameDataString = "",
+                IsEndRound = true,
+                ReturnReason = 0
+            };
+            _previousCreditTransactionId = request.TransactionId;
+
+            var response = await Settle(request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"ErrorCode should be = 0 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription.ToLower() != "Transaction has already processed".ToLower())
+            {
+                Console.WriteLine($"Error description should be: \"Transaction has already processed\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private async Task<bool> Credit(string loginToken)
+        {
+            var request = new ProviderSettleRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                CreditAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = "c"+(_previousTransactionId.Substring(1)),
+                Uid = "2033sbons490854",
+                CreditIndex = "1|1",
+                DebitTransactionId = _previousTransactionId,
+                GameDataString = "",
+                IsEndRound = true,
+                ReturnReason = 0
+            };
+            _previousCreditTransactionId = request.TransactionId;
+
+            var response = await Settle(request);
+
+            PushResultToReport(response, request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"ErrorCode should be = 0 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Completed successfully")
+            {
+                Console.WriteLine($"Error description should be: \"Completed successfully\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            var delta = Math.Abs((_previousBalance + request.CreditAmount) - response.Balance);
+            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance + request.CreditAmount) && delta > 0.1)
+            {
+                Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance + request.CreditAmount)}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            _previousBalance = response.Balance;
+            Pass(); return true;
+        }
+
+        private void PushResultToReport(ProviderSettleResponse response, ProviderSettleRequest request)
+        {
+            var targetReport = _reports.FirstOrDefault(report => report.DebitTransactionId.Equals(request.DebitTransactionId));
+            if (targetReport == null)
+            {
+                Console.WriteLine($"No report found for credit response {JsonConvert.SerializeObject(response)}");
+                return;
+            }
+
+            targetReport.Win = request.CreditAmount;
+            targetReport.Balance = response.Balance;
+            targetReport.TimeStamp = response.Timestamp;
+            targetReport.BalanceIndex = GetBalanceIndex(response.Balance);
+            targetReport.TimeStampIndex = GetTimeStampIndex(response.Timestamp);
+        }
+
+        private int GetTimeStampIndex(long timestamp)
+        {
+            var report = _reports.FirstOrDefault(report => report.TimeStamp == timestamp);
+            if (report != null)
+            {
+                return _reports.LastOrDefault()?.TimeStampIndex + 1 ?? 0;
+            }
+            else
+            {
+                return report.TimeStampIndex;
+            }
+        }
+
+        private int GetBalanceIndex(double balance)
+        {
+            var report = _reports.FirstOrDefault(report => report.Balance == balance);
+            if(report != null)
+            {
+                return _reports.LastOrDefault()?.BalanceIndex + 1 ?? 0;
+            }
+            else
+            {
+                return report.BalanceIndex;
+            }
+        }
+
+        private async Task<bool> DebitAfterRollback(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = _previousTransactionId,
+                Uid = "2033sbons490854",
+            };
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 1)
+            {
+                Console.WriteLine($"ErrorCode should be = 1. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription.ToLower() != "Debit after rollback".ToLower())
+            {
+                Console.WriteLine($"Error description should be: \"Debit after rollback\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> RollbackBeforeDebit(string loginToken)
+        {
+            var request = new ProviderCancelRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                RollbackAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await Cancel(request);
+
+            if (response.ErrorCode != 9)
+            {
+                Console.WriteLine($"ErrorCode should be = 9. Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.ErrorDescription != "Transaction not found")
+            {
+                Console.WriteLine($"Error description should be: \"Transaction not found\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> RetryForRollback(string loginToken)
+        {
+            var request = new ProviderCancelRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                RollbackAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = _previousTransactionId,
+                Uid = "2033sbons490854",
+            };
+
+            var response = await Cancel(request);
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.ErrorDescription != "Transaction has already processed")
+            {
+                Console.WriteLine($"Error description should be: \"Transaction has already processed\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private async Task<bool> Rollback(string loginToken)
+        {
+            var request = new ProviderCancelRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                RollbackAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = _previousTransactionId,
+                Uid = "2033sbons490854",
+            };
+
+            var response = await Cancel(request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.ErrorDescription != "Completed successfully")
+            {
+                Console.WriteLine($"Error description should be: \"Completed successfully\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            var delta = Math.Abs(response.Balance - (_previousBalance + request.RollbackAmount));
+            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance + request.RollbackAmount) && delta >= 0.1)
+            {
+                Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance + request.RollbackAmount)}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            _previousBalance = response.Balance;
+            Pass(); return true;
+        }
+
+        private async Task<bool> RetryForDebit(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = _previousTransactionId,
+                Uid = "2033sbons490854",
+            };
+
+            var response = await PlaceBet(request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.ErrorDescription != "Transaction has already processed")
+            {
+                Console.WriteLine($"Error description should be: \"Transaction has already processed\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != _previousBalance)
+            {
+                Console.WriteLine($"Balance should be {_previousBalance}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+
+            Pass(); return true;
+        }
+
+        private async Task<bool> Debit(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = "THB",
+                DebitAmount = 1.99,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = "2033sbons490854",
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+
+            var response = await PlaceBet(request);
+
+            PushResultToReport(response, request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount))
+            {
+                Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount)}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine($"Timestamp should responce bigger than request Timestamp response: {response.Timestamp}, request: {request.Timestamp}");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            _previousBalance = response.Balance;
+            Pass(); return true;
+        }
+
+        private void PushResultToReport(ProviderPlaceBetResponse response, ProviderPlaceBetRequest request)
+        {
+            var newReport = new BetReport()
+            {
+                Operater = response.OperatorId,
+                User = response.Uid,
+                GameId = request.GameId,
+                Table = request.TableId,
+                Seat = request.SeatId,
+                BetType = request.BetTypeID,
+                Bet = request.DebitAmount,
+                Currency = request.Currency,
+                DebitTransactionId = request.TransactionId,
+            };
+
+            _reports.Add(newReport);
+        }
+
+        private string GetTransactionId()
+        {
+            // generate this "dd5dd33e-1ada-48df-bf71-87d1cb41242a"
+            var random = new Random();
+            var transactionId = $"PinAutoMationTest-{random.Next(100000, 999999)}-{random.Next(100000, 999999)}-{random.Next(100000, 999999)}-{random.Next(100000, 999999)}";
+            return transactionId;
+        }
+
+        private long GetRoundId()
+        {
+            var random = new Random();
+            var roundId = (long)(random.Next(100000, 999999) * 100000L + random.Next(100000, 999999));
+            return roundId;
+        }
+
+        private async Task<bool> RepeatedAuthentication(string loginToken)
+        {
+            var awaitSecond = 1;
+            Console.WriteLine($"RepeatedAuthentication after {awaitSecond}second");
+            await Task.Delay(TimeSpan.FromSeconds(awaitSecond));
+            var request = new AuthenticationRequest
+            {
+                PlatformId = 0,
+                OperatorId = _operatorId,
+                Token = loginToken,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+            var response = await Authentication(request);
+            if (response.ErrorCode == 0)
+            {
+                Console.WriteLine($"Should got error Token not found. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorCode != 6)
+            {
+                Console.WriteLine($"Should got error code 6. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            Pass(); return true;
+        }
+
+        private static void Pass()
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("Pass");
+            Console.ResetColor();
+        }
+
+        private async Task<bool> NormalAuthentication(string loginToken)
+        {
+            var request = new AuthenticationRequest
+            {
+                PlatformId = 0,
+                OperatorId = _operatorId,
+                Token = loginToken,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            };
+            var response = await Authentication(request);
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.Token == request.Token)
+            {
+                Console.WriteLine($"Token should not return the same");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            _previousBalance = response.Balance;
+            _transactionToken = response.Token;
+            Pass(); return true;
+        }
+
+        public async Task<AuthenticationResponse> Authentication(AuthenticationRequest request)
+        {
+            var response = await CallTOUtopiaEzugi<AuthenticationRequest, AuthenticationResponse>($"{_baseUrl}/api/provider/authentication", request);
+            return response;
+        }
+
+        public async Task<ProviderPlaceBetResponse> PlaceBet(ProviderPlaceBetRequest request, string hash = null, bool isWithHash = true)
+        {
+            var response = await CallTOUtopiaEzugi<ProviderPlaceBetRequest, ProviderPlaceBetResponse>($"{_baseUrl}/api/provider/debit", request, hash, isWithHash);
+            return response;
+        }
+
+        public async Task<ProviderSettleResponse> Settle(ProviderSettleRequest request)
+        {
+            var response = await CallTOUtopiaEzugi<ProviderSettleRequest, ProviderSettleResponse>($"{_baseUrl}/api/provider/credit", request);
+            return response;
+        }
+
+        public async Task<ProviderCancelResponse> Cancel(ProviderCancelRequest request)
+        {
+            var response = await CallTOUtopiaEzugi<ProviderCancelRequest, ProviderCancelResponse>($"{_baseUrl}/api/provider/rollback", request);
+            return response;
+        }
+
+        public async Task<TResponse> CallTOUtopiaEzugi<TRequest, TResponse>(string url, TRequest request, string hash = null, bool isWithHash = true)
+        {
+            var header = new Dictionary<string, string>();
+
+            if(isWithHash)
+                header.Add("hash", hash ?? CreateHMACSHA256(JsonConvert.SerializeObject(request), "d498b38b-ac48-4d83-8125-8d154638f5b0"));
+
+            var response = await _httpHelper.PostAsync<TRequest, TResponse>(url, request, header);
+            return response;
+        }
+
+        private static async Task<string> GenerateApiRequest(string url, EzugiGetsRequest parameters, string saltKey)
+        {
+            using (var client = new HttpClient())
+            {
+                var paramString = $"DataSet={parameters.DataSet}&APIID={parameters.APIID}&APIUser={parameters.APIUser}";
+                var requestToken = ComputeSha256Hash(saltKey + paramString);
+                paramString += $"&RequestToken={requestToken}";
+
+                var content = new StringContent(paramString, Encoding.UTF8, "application/x-www-form-urlencoded");
+                var response = await client.PostAsync(url, content);
+                return await response.Content.ReadAsStringAsync();
+            }
+        }
+
+        private static string ComputeSha256Hash(string rawData)
+        {
+            using (SHA256 sha256Hash = SHA256.Create())
+            {
+                byte[] bytes = sha256Hash.ComputeHash(Encoding.UTF8.GetBytes(rawData));
+                StringBuilder builder = new StringBuilder();
+                foreach (byte b in bytes)
+                {
+                    builder.Append(b.ToString("x2"));
+                }
+                return builder.ToString();
+            }
+        }
+        private string CreateHMACSHA256(string message, string secret)
+        {
+            secret = secret ?? "";
+            var encoding = new System.Text.ASCIIEncoding();
+            byte[] keyByte = encoding.GetBytes(secret);
+            byte[] messageBytes = encoding.GetBytes(message);
+            using (var hmacsha256 = new HMACSHA256(keyByte))
+            {
+                byte[] hashmessage = hmacsha256.ComputeHash(messageBytes);
+                return Convert.ToBase64String(hashmessage);
+            }
+        }
+
+        public async Task PlayerStressTest()
+        {
+            Console.Clear();
+            Console.WriteLine("Player stress test started");
+            var betCount = 50;
+            var loginURL = await GetLoginUrl();
+            if (await NormalAuthentication(loginURL))
+            {
+                for (var bet = 0; bet < betCount; bet++)
+                {
+                    Console.WriteLine($"Bet {bet + 1} of {betCount} -------------------------------------------");
+                    var placeBetResult = await Debit("");
+                    //if (!placeBetResult)
+                    //{
+                    //    Console.WriteLine($"PlaceBet failed on bet {bet + 1}");
+                    //    return;
+                    //}
+                    var settleResult = await Credit("");
+                    //if (!settleResult)
+                    //{
+                    //    Console.WriteLine($"Settle failed on bet {bet + 1}");
+                    //    return;
+                    //}
+                    Console.WriteLine($"Balance{_previousBalance}");
+                }
+
+                Console.WriteLine("Player stress test completed successfully \n \n");
+
+                Console.WriteLine($"{JsonConvert.SerializeObject(_reports)}");
+            }
+        }
+    }
+
+    internal class BetReport
+    {
+        public BetReport()
+        {
+        }
+
+        public int Operater { get; set; }
+        public string User { get; set; }
+        public int GameId { get; set; }
+        public int Table { get; set; }
+        public string Seat { get; set; }
+        public int BetType { get; set; }
+        public double Bet { get; set; }
+        public string Currency { get; set; }
+        public string DebitTransactionId { get; set; }
+        public double Win { get; set; }
+        public double Balance { get; set; }
+        public long TimeStamp { get; set; }
+        public int BalanceIndex { get; internal set; }
+        public int TimeStampIndex { get; internal set; }
+    }
+
+    public class ProviderCancelRequest
+    {
+        public int OperatorId { get; set; }
+        public string Uid { get; set; }
+        public string TransactionId { get; set; }
+        public int GameId { get; set; }
+        public string Token { get; set; }
+        public double RollbackAmount { get; set; }
+        public int BetTypeID { get; set; }
+        public int ServerId { get; set; }
+        public long RoundId { get; set; }
+        public string Currency { get; set; }
+        public string SeatId { get; set; }
+        public int PlatformId { get; set; }
+        public int TableId { get; set; }
+        public long Timestamp { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    public class ProviderCancelResponse
+    {
+        public string Uid { get; set; }
+        public string Token { get; set; }
+        public string TransactionId { get; set; }
+        public string Currency { get; set; }
+        public long RoundId { get; set; }
+        public double Balance { get; set; }
+        public int ErrorCode { get; set; }
+        public string ErrorDescription { get; set; }
+        public long Timestamp { get; set; }
+        public int OperatorId { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    public class ProviderSettleRequest
+    {
+        public int OperatorId { get; set; }
+        public string Uid { get; set; }
+        public string TransactionId { get; set; }
+        public int GameId { get; set; }
+        public string Token { get; set; }
+        public double CreditAmount { get; set; }
+        public int BetTypeID { get; set; }
+        public int ServerId { get; set; }
+        public long RoundId { get; set; }
+        public string Currency { get; set; }
+        public string SeatId { get; set; }
+        public int PlatformId { get; set; }
+        public int TableId { get; set; }
+        public int ReturnReason { get; set; }
+        public string CreditIndex { get; set; }
+        public bool IsEndRound { get; set; }
+        public string GameDataString { get; set; }
+        public string DebitTransactionId { get; set; }
+        public long Timestamp { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    public class ProviderSettleResponse
+    {
+        public string Uid { get; set; }
+        public string NickName { get; set; }
+        public string Token { get; set; }
+        public string TransactionId { get; set; }
+        public string Currency { get; set; }
+        public long RoundId { get; set; }
+        public double BonusAmount { get; set; }
+        public double Balance { get; set; }
+        public int ErrorCode { get; set; }
+        public string ErrorDescription { get; set; }
+        public long Timestamp { get; set; }
+        public int OperatorId { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    public class ProviderPlaceBetRequest
+    {
+        public int OperatorId { get; set; }
+        public string Uid { get; set; }
+        public string TransactionId { get; set; }
+        public int GameId { get; set; }
+        public string Token { get; set; }
+        public double DebitAmount { get; set; }
+        public int BetTypeID { get; set; }
+        public int ServerId { get; set; }
+        public long RoundId { get; set; }
+        public string Currency { get; set; }
+        public string SeatId { get; set; }
+        public int PlatformId { get; set; }
+        public int TableId { get; set; }
+
+        // Unix timestamp in milliseconds
+        public long Timestamp { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    public class ProviderPlaceBetResponse
+    {
+        public string Uid { get; set; }
+        public string NickName { get; set; }
+        public string Token { get; set; }
+        public string TransactionId { get; set; }
+        public string Currency { get; set; }
+        public long RoundId { get; set; }
+        public double BonusAmount { get; set; }
+        public double Balance { get; set; }
+        public int ErrorCode { get; set; }
+        public string ErrorDescription { get; set; }
+
+        // Unix timestamp in milliseconds
+        public long Timestamp { get; set; }
+
+        public int OperatorId { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    public class AuthenticationRequest
+    {
+        public int PlatformId { get; set; }
+        public int OperatorId { get; set; }
+        public string Token { get; set; }
+
+        // This will hold the Unix timestamp in milliseconds.
+        public long Timestamp { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    public class AuthenticationResponse
+    {
+        public int OperatorId { get; set; }
+        public string Uid { get; set; }
+        public string NickName { get; set; }
+        public string Token { get; set; }
+        public string PlayerTokenAtLaunch { get; set; }
+        public double Balance { get; set; }
+        public string Currency { get; set; }
+        public string VIP { get; set; }
+        public int ErrorCode { get; set; }
+        public string ErrorDescription { get; set; }
+
+        // Unix timestamp in milliseconds
+        public long Timestamp { get; set; }
+
+        // Optional helper to convert timestamp to DateTime (UTC)
+        public DateTime GetTimestampAsDateTime()
+        {
+            return DateTimeOffset.FromUnixTimeMilliseconds(Timestamp).UtcDateTime;
+        }
+    }
+
+    internal class EzugiGetsRequest
+    {
+        public EzugiGetsRequest()
+        {
+        }
+
+        public string DataSet { get; set; }
+        public string APIID { get; set; }
+        public string APIUser { get; set; }
+    }
+}
