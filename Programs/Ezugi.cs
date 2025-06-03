@@ -15,11 +15,14 @@ namespace TestConsole.Programs
         private int _operatorId = 11061001;
         private long _previousRoundId;
         private string _previousTransactionId;
+        private double _previousStake;
         private double _previousBalance;
         private string _transactionToken;
         private string _previousCreditTransactionId;
         private string _baseUrl = "https://capi-uat-ezugi.techbodia.dev";
         private List<BetReport> _reports = new List<BetReport>();
+        private string _username = "";
+        private string _currency = "";
 
         //private string _baseUrl = "https://localhost:7128";
 
@@ -106,7 +109,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -162,7 +165,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 1.99,
                 GameId = 1,
                 //OperatorId = _operatorId,
@@ -174,7 +177,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -209,7 +212,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -221,7 +224,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -277,7 +280,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -289,7 +292,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -355,7 +358,7 @@ namespace TestConsole.Programs
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 CreditAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -367,7 +370,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = "c" + (GetTransactionId()),
-                Uid = "2033sbons490854",
+                Uid = _username,
                 CreditIndex = "1|1",
                 DebitTransactionId = _previousTransactionId,
                 GameDataString = "",
@@ -427,7 +430,7 @@ namespace TestConsole.Programs
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 CreditAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -439,7 +442,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = "c" + (_previousTransactionId.Substring(1)),
-                Uid = "2033sbons490854",
+                Uid = _username,
                 CreditIndex = "1|1",
                 DebitTransactionId = _previousCreditTransactionId+"adf",
                 GameDataString = "",
@@ -499,7 +502,7 @@ namespace TestConsole.Programs
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 CreditAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -511,7 +514,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = "c" + (_previousTransactionId.Substring(1)),
-                Uid = "2033sbons490854",
+                Uid = _username,
                 CreditIndex = "1|1",
                 DebitTransactionId = "",
                 GameDataString = "",
@@ -571,8 +574,8 @@ namespace TestConsole.Programs
             var request = new ProviderCancelRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
-                RollbackAmount = 2.99,
+                Currency = _currency,
+                RollbackAmount = _previousStake + 10,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -583,7 +586,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = _previousTransactionId,
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
 
             var response = await Cancel(request);
@@ -628,8 +631,59 @@ namespace TestConsole.Programs
 
         private async Task<string> GetLoginUrl()
         {
+            Console.WriteLine("Select player credentials: 1 / 2");
+            var choice = Console.ReadLine();
+            var jsonRequest = "";
+            if (choice != null)
+            {
+                if (choice == "1")
+                {
+                    jsonRequest = GetPlayerCredential1();
+                }
+                else if (choice == "2")
+                {
+                    jsonRequest = GetPlayerCredential2();
+                }
+                else
+                {
+                    Console.WriteLine("Invalid choice. Defaulting to Player 1 credentials.");
+                    jsonRequest = GetPlayerCredential1();
+                }
+            }
+
             var url = $"{_baseUrl}/Provider/Login";
-            var jsonRequest = @"{
+             
+            var response = await _httpHelper.PostAsync(url, jsonRequest);
+            var jsonDoc = JsonDocument.Parse(response);
+            if (jsonDoc.RootElement.TryGetProperty("result", out var resultElement))
+            {
+                var result = resultElement.GetString();
+                // Extract query part of the URL
+                var uri = new Uri(result);
+                var query = uri.Query;
+
+                // Parse query parameters
+                var queryParams = HttpUtility.ParseQueryString(query);
+                string token = queryParams["token"];
+
+                Console.WriteLine($"Login Token: {token}");
+                return token;
+            }
+            else
+            {
+                Console.WriteLine("Token not found in the response.");
+                return string.Empty;
+            }
+        }
+
+        private string GetPlayerCredential2()
+        {
+            return @"{""User"":""2468sbons520081"",""ProcessLoginModel"":{""GameId"":0,""GpId"":1088,""Lang"":1,""IsPlayForReal"":true,""Device"":""d"",""IsApp"":false,""IsLoginToSpecificGame"":false,""GameCode"":"""",""GameHall"":"""",""HomeUrl"":"""",""BetCode"":"""",""Ip"":""163.47.15.15"",""MarsDomain"":""lmd-uat.gaolitsai.com"",""UserAgent"":""Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0""},""PlayerLoginInfoModel"":{""CustomerId"":520081,""IsTest"":0,""PlayerInfo"":{""CustomerID"":520081,""AccountID"":""2468yy_pinplayerTMP4"",""Credit"":0,""Outstanding"":0.0,""CashBalance"":0.0,""Reward"":0,""Currency"":""TMP"",""Status"":0,""DisplayName"":null,""Ladder"":0,""Experience"":0,""LastLoginIP"":""Mirana Ip"",""LastLoginTime"":null,""PasswordExpiryDate"":null,""CanChangeDisplayName"":false,""CanChangeLoginName"":false,""FirstTimeSignOn"":false,""ProductAvailable"":null,""TableLimit"":0,""OddsStyle"":0,""WebId"":2468}}} ";
+        }
+
+        private string GetPlayerCredential1()
+        {
+            return @"{
                                 	""User"": ""2033sbons490854"",
                                 	""ProcessLoginModel"": {
                                 		""GameId"": 0,
@@ -675,37 +729,14 @@ namespace TestConsole.Programs
                                 		}
                                 	}
                                 }";
-            var response = await _httpHelper.PostAsync(url, jsonRequest);
-            var jsonDoc = JsonDocument.Parse(response);
-            if (jsonDoc.RootElement.TryGetProperty("result", out var resultElement))
-            {
-                var result = resultElement.GetString();
-                // Extract query part of the URL
-                var uri = new Uri(result);
-                var query = uri.Query;
-
-                // Parse query parameters
-                var queryParams = HttpUtility.ParseQueryString(query);
-                string token = queryParams["token"];
-
-                Console.WriteLine($"Login Token: {token}");
-                return token;
-            }
-            else
-            {
-                Console.WriteLine("Token not found in the response.");
-                return string.Empty;
-            }
         }
-
-        
 
         private async Task<bool> DebitWithNegativeDebitAmount(string loginToken)
         {
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = -1.90,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -717,7 +748,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -767,7 +798,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 0,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -829,7 +860,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 0,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -841,7 +872,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken.Substring(0,loginToken.Length - 1) + "r",
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -891,7 +922,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = _previousBalance + 1,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -903,7 +934,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -958,7 +989,7 @@ namespace TestConsole.Programs
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 CreditAmount = 0,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -970,7 +1001,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = "c" + (_previousTransactionId.Substring(1)),
-                Uid = "2033sbons490854",
+                Uid = _username,
                 CreditIndex = "1|1",
                 DebitTransactionId = _previousTransactionId,
                 GameDataString = "",
@@ -1031,7 +1062,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 0,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -1043,7 +1074,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -1094,8 +1125,8 @@ namespace TestConsole.Programs
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
-                CreditAmount = 1.99,
+                Currency = _currency,
+                CreditAmount = _previousStake+1,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1106,7 +1137,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = _previousCreditTransactionId,
-                Uid = "2033sbons490854",
+                Uid = _username,
                 CreditIndex = "1|1",
                 DebitTransactionId = _previousTransactionId,
                 GameDataString = "",
@@ -1166,8 +1197,8 @@ namespace TestConsole.Programs
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
-                CreditAmount = 1,
+                Currency = _currency,
+                CreditAmount = _previousStake+1,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1178,7 +1209,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = "c"+(_previousTransactionId.Substring(1)),
-                Uid = "2033sbons490854",
+                Uid = _username,
                 CreditIndex = "1|1",
                 DebitTransactionId = _previousTransactionId,
                 GameDataString = "",
@@ -1284,7 +1315,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -1296,7 +1327,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = _previousTransactionId,
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
 
             var response = await PlaceBet(request);
@@ -1349,7 +1380,7 @@ namespace TestConsole.Programs
             var request = new ProviderCancelRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 RollbackAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -1361,7 +1392,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
@@ -1416,8 +1447,8 @@ namespace TestConsole.Programs
             var request = new ProviderCancelRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
-                RollbackAmount = 1.99,
+                Currency = _currency,
+                RollbackAmount = _previousStake,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1428,7 +1459,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = _previousTransactionId,
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
 
             var response = await Cancel(request);
@@ -1480,8 +1511,8 @@ namespace TestConsole.Programs
             var request = new ProviderCancelRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
-                RollbackAmount = 1.99,
+                Currency = _currency,
+                RollbackAmount = _previousStake,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1492,7 +1523,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = _previousTransactionId,
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
 
             var response = await Cancel(request);
@@ -1525,7 +1556,7 @@ namespace TestConsole.Programs
             }
             if (response.Timestamp <= request.Timestamp)
             {
-                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                Console.WriteLine($"Timestamp {response.Timestamp} should responce bigger than request Timestamp {request.Timestamp}");
                 return false;
             }
             _previousBalance = response.Balance;
@@ -1537,8 +1568,8 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
-                DebitAmount = 1.99,
+                Currency = _currency,
+                DebitAmount = _previousStake,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1549,7 +1580,7 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = _previousTransactionId,
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
 
             var response = await PlaceBet(request);
@@ -1588,7 +1619,7 @@ namespace TestConsole.Programs
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
-                Currency = "THB",
+                Currency = _currency,
                 DebitAmount = 1,
                 GameId = 1,
                 OperatorId = _operatorId,
@@ -1600,10 +1631,11 @@ namespace TestConsole.Programs
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
                 TransactionId = GetTransactionId(),
-                Uid = "2033sbons490854",
+                Uid = _username,
             };
             _previousRoundId = request.RoundId;
             _previousTransactionId = request.TransactionId;
+            _previousStake = request.DebitAmount;
 
             var response = await PlaceBet(request);
 
@@ -1736,11 +1768,13 @@ namespace TestConsole.Programs
             }
             if (response.Timestamp <= request.Timestamp)
             {
-                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                Console.WriteLine($"Timestamp {response.Timestamp} should responce bigger than request Timestamp {request.Timestamp}");
                 return false;
             }
             _previousBalance = response.Balance;
             _transactionToken = response.Token;
+            _username = response.Uid;
+            _currency = response.Currency;
             Pass(); return true;
         }
 
@@ -1848,6 +1882,7 @@ namespace TestConsole.Programs
                 Console.WriteLine("Player stress test completed successfully \n \n");
 
                 Console.WriteLine($"{JsonConvert.SerializeObject(_reports)}");
+                ExcelHelper.WriteDataTableToExcel(DataTableHelper.ToDataTable(_reports), $"C:\\Users\\sopheaktra.pin\\Downloads\\{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.xlsx", "BetReport");
             }
         }
     }

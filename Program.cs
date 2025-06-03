@@ -36,7 +36,7 @@ internal class Program
         //    await Task.Delay(TimeSpan.FromMilliseconds(10));
         //    Console.WriteLine(GetTimeStamp());
         //}
-
+        Console.ReadKey();
     }
     public static long GetTimeStamp()
     {
