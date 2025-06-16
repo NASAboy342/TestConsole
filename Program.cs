@@ -28,15 +28,15 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        var ezugi = new Ezugi();
-        //await ezugi.TestFinancial();
-        await ezugi.PlayerStressTest();
-        //for(var i = 0; i < 50; i++)
-        //{
-        //    await Task.Delay(TimeSpan.FromMilliseconds(10));
-        //    Console.WriteLine(GetTimeStamp());
-        //}
-        Console.ReadKey();
+        var llmPractice = new LlmPractice();
+        await llmPractice.Run();
+    }
+    private static async Task<string> GetMarsPublicTopDomian()
+    {
+        var marsPublicDomain = "lmd.xijiangx.com";
+        var parts = marsPublicDomain.Split('.');
+        var topLevelDomain = string.Join(".", parts[^2], parts[^1]);
+        return topLevelDomain;
     }
     public static long GetTimeStamp()
     {
@@ -463,6 +463,13 @@ internal class Program
     public static DateTime GetLastDayOfMonth(DateTime date)
     {
         return GetFirstDayOfMonth(date).AddMonths(1).AddDays(-1);
+    }
+
+    private static async Task<string> GetMarsPublicTopDomain()
+    {
+        var marsPublicDomain = "lmd-uat.gaolitsai.com";
+        var topLevelDomain = marsPublicDomain.Substring(marsPublicDomain.LastIndexOf('.') + 1);
+        return topLevelDomain;
     }
 }
 

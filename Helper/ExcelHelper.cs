@@ -67,6 +67,14 @@ namespace TestConsole.Helper
                         {
                             workSheet.Cell(i + 2, j + 1).Value = (int)value;
                         }
+                        else if (value is long)
+                        {
+                            workSheet.Cell(j + 2, j + 1).Value = Convert.ToString(value);
+                        }
+                        else if (value is float)
+                        {
+                            workSheet.Cell(i + 2, j + 1).Value = (float)value;
+                        }
                         else if (value is double)
                         {
                             workSheet.Cell(i + 2, j + 1).Value = (double)value;
@@ -100,6 +108,7 @@ namespace TestConsole.Helper
                 workSheet.Row(1).Style.Border.BottomBorderColor = XLColor.Black;
                 workSheet.Row(1).Style.Border.TopBorder = XLBorderStyleValues.Thin;
                 workSheet.Row(1).Style.Border.TopBorderColor = XLColor.Black;
+
 
                 // Save the workbook
                 workBook.SaveAs(filePath);

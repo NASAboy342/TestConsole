@@ -23,6 +23,7 @@ namespace TestConsole.Programs
         private List<BetReport> _reports = new List<BetReport>();
         private string _username = "";
         private string _currency = "";
+        private List<double> _expectedBalances = new List<double>();
 
         //private string _baseUrl = "https://localhost:7128";
 
@@ -39,7 +40,7 @@ namespace TestConsole.Programs
         }
         private async Task RunProviderTest(string loginToken)
         {
-            var awaitSecond = TimeSpan.FromSeconds(5);
+            var awaitSecond = TimeSpan.FromSeconds(0);
             var testSteps = new List<Func<string, Task<bool>>>
            {
                NormalAuthentication,
@@ -59,6 +60,8 @@ namespace TestConsole.Programs
                DebitWithWrongToken,
                DebitWithUnknowUser,
                DebitWithNegativeDebitAmount,
+               DebitAllPlayerBallance,
+               Rollback,
                Debit,
                RollbackWithWrongAmount,
                Rollback,
@@ -90,6 +93,72 @@ namespace TestConsole.Programs
                 _previousBalance = Get2DigitsAfterDecimalPoint(_previousBalance);
                 await Task.Delay(awaitSecond);
             }
+        }
+
+        private async Task<bool> DebitAllPlayerBallance(string arg)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = _currency,
+                DebitAmount = _previousBalance,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = _username,
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+            _previousStake = request.DebitAmount;
+
+            var response = await PlaceBet(request);
+
+            //PushResultToReport(response, request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount))
+            {
+                Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount)}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine($"Timestamp should responce bigger than request Timestamp response: {response.Timestamp}, request: {request.Timestamp}. smaller by: {(DateTimeOffset.FromUnixTimeMilliseconds(response.Timestamp) - DateTimeOffset.FromUnixTimeMilliseconds(request.Timestamp)).TotalMilliseconds}ms");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            _previousBalance = response.Balance;
+            Pass(); return true;
         }
 
         private async Task<bool> InvalidCurrency(string arg)
@@ -350,7 +419,9 @@ namespace TestConsole.Programs
             {
                 numberParts[1] = numberParts[1].Substring(0, 2);
             }
-            return Convert.ToDouble($"{numberParts[0]}.{numberParts[1]}");
+            if(numberParts.Length > 1)
+                return Convert.ToDouble($"{numberParts[0]}.{numberParts[1]}");
+            return amount;
         }
 
         private async Task<bool> CreditWithDebitTransactionIdWhichAlreadyWasProcessed(string arg)
@@ -631,11 +702,11 @@ namespace TestConsole.Programs
 
         private async Task<string> GetLoginUrl()
         {
-            Console.WriteLine("Select player credentials: 1 / 2");
-            var choice = Console.ReadLine();
+            Console.WriteLine("Select player credentials: [1] [2] [3]");
             var jsonRequest = "";
-            if (choice != null)
+            while (string.IsNullOrEmpty(jsonRequest))
             {
+                var choice = Console.ReadLine();
                 if (choice == "1")
                 {
                     jsonRequest = GetPlayerCredential1();
@@ -644,10 +715,13 @@ namespace TestConsole.Programs
                 {
                     jsonRequest = GetPlayerCredential2();
                 }
-                else
+                else if (choice == "3")
                 {
-                    Console.WriteLine("Invalid choice. Defaulting to Player 1 credentials.");
-                    jsonRequest = GetPlayerCredential1();
+                    jsonRequest = GetPlayerCredential3();
+                }
+                else
+                { 
+                    Console.WriteLine("Invalid choice. Select player credentials: [1] [2] [3]");
                 }
             }
 
@@ -674,6 +748,11 @@ namespace TestConsole.Programs
                 Console.WriteLine("Token not found in the response.");
                 return string.Empty;
             }
+        }
+
+        private string GetPlayerCredential3()
+        {
+            return @"{""User"":""2468sbons520169"",""ProcessLoginModel"":{""GameId"":0,""GpId"":1088,""Lang"":1,""IsPlayForReal"":true,""Device"":""d"",""IsApp"":false,""IsLoginToSpecificGame"":false,""GameCode"":"""",""GameHall"":"""",""HomeUrl"":"""",""BetCode"":"""",""Ip"":""163.47.15.15"",""MarsDomain"":""lmd-uat.gaolitsai.com"",""UserAgent"":""Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36 Edg/136.0.0.0""},""PlayerLoginInfoModel"":{""CustomerId"":520169,""IsTest"":0,""PlayerInfo"":{""CustomerID"":520169,""AccountID"":""2468yy_lcg_thb"",""Credit"":0,""Outstanding"":0.0,""CashBalance"":0.0,""Reward"":0,""Currency"":""THB"",""Status"":0,""DisplayName"":null,""Ladder"":0,""Experience"":0,""LastLoginIP"":""Mirana Ip"",""LastLoginTime"":null,""PasswordExpiryDate"":null,""CanChangeDisplayName"":false,""CanChangeLoginName"":false,""FirstTimeSignOn"":false,""ProductAvailable"":null,""TableLimit"":0,""OddsStyle"":0,""WebId"":2468}}}";
         }
 
         private string GetPlayerCredential2()
@@ -1032,7 +1111,7 @@ namespace TestConsole.Programs
                 Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
                 return false;
             }
-            if (response.Balance != _previousBalance + request.CreditAmount)
+            if (Math.Abs(response.Balance - (_previousBalance + request.CreditAmount)) > 0.02)
             {
                 Console.WriteLine($"Balance should be {_previousBalance + request.CreditAmount}. response: {JsonConvert.SerializeObject(response)}");
                 return false;
@@ -1063,7 +1142,7 @@ namespace TestConsole.Programs
             {
                 BetTypeID = 1,
                 Currency = _currency,
-                DebitAmount = 0,
+                DebitAmount = 1.99,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1083,7 +1162,7 @@ namespace TestConsole.Programs
 
             if (response.ErrorCode != 0)
             {
-                Console.WriteLine($"Error: {response.ErrorDescription}");
+                Console.WriteLine($"Error should be 0: response {JsonConvert.SerializeObject(response.ErrorDescription)}");
                 return false;
             }
             if (response.RoundId != request.RoundId)
@@ -1096,7 +1175,7 @@ namespace TestConsole.Programs
                 Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
                 return false;
             }
-            if (response.Balance != _previousBalance - request.DebitAmount)
+            if ( Math.Abs(response.Balance - (_previousBalance - request.DebitAmount)) > 0.03)
             {
                 Console.WriteLine($"Balance should be {_previousBalance - request.DebitAmount}. response: {JsonConvert.SerializeObject(response)}");
                 return false;
@@ -1192,13 +1271,14 @@ namespace TestConsole.Programs
             Pass(); return true;
         }
 
-        private async Task<bool> Credit(string loginToken)
+        private async Task<bool> Credit(string loginToken, double settleAmount = 0, string transactionId = null)
         {
+            var transactionIdToUse = (transactionId != null ? transactionId : _previousTransactionId);
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
                 Currency = _currency,
-                CreditAmount = _previousStake+1,
+                CreditAmount = settleAmount,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1208,19 +1288,23 @@ namespace TestConsole.Programs
                 TableId = 1,
                 Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 Token = _transactionToken,
-                TransactionId = "c"+(_previousTransactionId.Substring(1)),
+                TransactionId = "c"+(transactionIdToUse.Substring(1)),
                 Uid = _username,
                 CreditIndex = "1|1",
-                DebitTransactionId = _previousTransactionId,
+                DebitTransactionId = transactionIdToUse,
                 GameDataString = "",
                 IsEndRound = true,
                 ReturnReason = 0
             };
             _previousCreditTransactionId = request.TransactionId;
 
+            var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var response = await Settle(request);
+            var endTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            PushResultToReport(response, request);
+            var deltaMS = Convert.ToInt32(endTime - startTime);
+
+            PushResultToReport(response, request, deltaMS);
 
             if (response.ErrorCode != 0)
             {
@@ -1268,20 +1352,117 @@ namespace TestConsole.Programs
             Pass(); return true;
         }
 
-        private void PushResultToReport(ProviderSettleResponse response, ProviderSettleRequest request)
+        private async Task<bool> Credit(string loginToken)
         {
-            var targetReport = _reports.FirstOrDefault(report => report.DebitTransactionId.Equals(request.DebitTransactionId));
-            if (targetReport == null)
+            var transactionIdToUse =_previousTransactionId;
+            var request = new ProviderSettleRequest
             {
-                Console.WriteLine($"No report found for credit response {JsonConvert.SerializeObject(response)}");
-                return;
+                BetTypeID = 1,
+                Currency = _currency,
+                CreditAmount = (_previousStake + 1),
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = _previousRoundId,
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = "c" + (transactionIdToUse.Substring(1)),
+                Uid = _username,
+                CreditIndex = "1|1",
+                DebitTransactionId = transactionIdToUse,
+                GameDataString = "",
+                IsEndRound = true,
+                ReturnReason = 0
+            };
+            _previousCreditTransactionId = request.TransactionId;
+
+            var response = await Settle(request);
+
+            //PushResultToReport(response, request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"ErrorCode should be = 0 response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.ErrorDescription != "Completed successfully")
+            {
+                Console.WriteLine($"Error description should be: \"Completed successfully\". response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            var delta = Math.Abs((_previousBalance + request.CreditAmount) - response.Balance);
+            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance + request.CreditAmount) && delta > 0.1)
+            {
+                Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance + request.CreditAmount)}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine("Timestamp should responce bigger than request Timestamp");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
             }
 
-            targetReport.Win = request.CreditAmount;
-            targetReport.BalanceIndex = GetBalanceIndex(response.Balance);
-            targetReport.TimeStampIndex = GetTimeStampIndex(response.Timestamp);
-            targetReport.Balance = response.Balance;
-            targetReport.TimeStamp = response.Timestamp;
+            _previousBalance = response.Balance;
+            Pass(); return true;
+        }
+
+        private void PushResultToReport(ProviderSettleResponse response, ProviderSettleRequest request, int deltaMS)
+        {
+            var newReport = new BetReport
+            {
+                Operater = response.OperatorId,
+                User = response.Uid,
+                GameId = request.GameId,
+                Table = request.TableId,
+                Seat = request.SeatId,
+                BetType = request.BetTypeID,
+                Win = request.CreditAmount,
+                Currency = request.Currency,
+                DebitTransactionId = request.TransactionId,
+                BalanceIndex = GetBalanceIndex(response.Balance),
+                TimeStampIndex = GetTimeStampIndex(response.Timestamp),
+                Balance = response.Balance,
+                TimeStamp = response.Timestamp,
+                ExpectedBalance = _expectedBalances.Count > 0 ? _expectedBalances[_reports.Count+1] : 0,
+                Ping = deltaMS,
+            };
+            var isAddSuccess = false;
+            while (!isAddSuccess)
+            {
+                try
+                {
+                    _reports = _reports.OrderBy(report => report.TimeStamp).ToList();
+                    _reports.Add(newReport);
+                    isAddSuccess = true;
+                }
+                catch
+                {
+
+                }
+            }
         }
 
         private int GetTimeStampIndex(long timestamp)
@@ -1293,16 +1474,16 @@ namespace TestConsole.Programs
             }
             else
             {
-                return _reports.Count;
+                return _reports.Count + 1;
             }
         }
 
         private int GetBalanceIndex(double balance)
         {
-            var report = _reports.FirstOrDefault(report => report.Balance == balance) ?? null;
-            if(report != null)
+            var marchBalance = _expectedBalances.FirstOrDefault(b => balance == b);
+            if(marchBalance != null)
             {
-                return report.BalanceIndex;
+                return _expectedBalances.IndexOf(marchBalance);
             }
             else
             {
@@ -1614,13 +1795,13 @@ namespace TestConsole.Programs
             Pass(); return true;
         }
 
-        private async Task<bool> Debit(string loginToken)
+        private async Task<bool> Debit(string loginToken, int betAmount = 1)
         {
             var request = new ProviderPlaceBetRequest
             {
                 BetTypeID = 1,
                 Currency = _currency,
-                DebitAmount = 1,
+                DebitAmount = betAmount,
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1637,9 +1818,13 @@ namespace TestConsole.Programs
             _previousTransactionId = request.TransactionId;
             _previousStake = request.DebitAmount;
 
+            var startTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var response = await PlaceBet(request);
+            var endTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            PushResultToReport(response, request);
+            var deltaMS = Convert.ToInt32(endTime - startTime);
+
+            PushResultToReport(response, request, deltaMS);
 
             if (response.ErrorCode != 0)
             {
@@ -1679,8 +1864,73 @@ namespace TestConsole.Programs
             _previousBalance = response.Balance;
             Pass(); return true;
         }
+        private async Task<bool> Debit(string loginToken)
+        {
+            var request = new ProviderPlaceBetRequest
+            {
+                BetTypeID = 1,
+                Currency = _currency,
+                DebitAmount = 1,
+                GameId = 1,
+                OperatorId = _operatorId,
+                PlatformId = 0,
+                RoundId = GetRoundId(),
+                SeatId = "s6",
+                ServerId = 102,
+                TableId = 1,
+                Timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                Token = _transactionToken,
+                TransactionId = GetTransactionId(),
+                Uid = _username,
+            };
+            _previousRoundId = request.RoundId;
+            _previousTransactionId = request.TransactionId;
+            _previousStake = request.DebitAmount;
 
-        private void PushResultToReport(ProviderPlaceBetResponse response, ProviderPlaceBetRequest request)
+            var response = await PlaceBet(request);
+
+            //PushResultToReport(response, request);
+
+            if (response.ErrorCode != 0)
+            {
+                Console.WriteLine($"Error: {response.ErrorDescription}");
+                return false;
+            }
+            if (response.RoundId != request.RoundId)
+            {
+                Console.WriteLine($"RoundId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.TransactionId != request.TransactionId)
+            {
+                Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount))
+            {
+                Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount)}. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Timestamp <= request.Timestamp)
+            {
+                Console.WriteLine($"Timestamp should responce bigger than request Timestamp response: {response.Timestamp}, request: {request.Timestamp}. smaller by: {(DateTimeOffset.FromUnixTimeMilliseconds(response.Timestamp) - DateTimeOffset.FromUnixTimeMilliseconds(request.Timestamp)).TotalMilliseconds}ms");
+                return false;
+            }
+            if (response.Token != request.Token)
+            {
+                Console.WriteLine($"Token should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            if (response.Uid != request.Uid)
+            {
+                Console.WriteLine($"Uid should be the same. response: {JsonConvert.SerializeObject(response)}");
+                return false;
+            }
+            _previousBalance = response.Balance;
+            Pass(); return true;
+        }
+
+        private void PushResultToReport(ProviderPlaceBetResponse response, ProviderPlaceBetRequest request, int deltaMS)
         {
             var newReport = new BetReport()
             {
@@ -1693,6 +1943,12 @@ namespace TestConsole.Programs
                 Bet = request.DebitAmount,
                 Currency = request.Currency,
                 DebitTransactionId = request.TransactionId,
+                BalanceIndex = GetBalanceIndex(response.Balance),
+                TimeStampIndex = GetTimeStampIndex(response.Timestamp),
+                Balance = response.Balance,
+                TimeStamp = response.Timestamp,
+                ExpectedBalance = _expectedBalances.Count > 0 ? _expectedBalances[_reports.Count + 1] : 0,
+                Ping = deltaMS,
             };
 
             _reports.Add(newReport);
@@ -1768,7 +2024,7 @@ namespace TestConsole.Programs
             }
             if (response.Timestamp <= request.Timestamp)
             {
-                Console.WriteLine($"Timestamp {response.Timestamp} should responce bigger than request Timestamp {request.Timestamp}");
+                Console.WriteLine($"Timestamp {response.Timestamp} should responce bigger than request Timestamp {request.Timestamp}. smaller by: {(DateTimeOffset.FromUnixTimeMilliseconds(response.Timestamp) - DateTimeOffset.FromUnixTimeMilliseconds(request.Timestamp)).TotalMilliseconds}ms");
                 return false;
             }
             _previousBalance = response.Balance;
@@ -1857,33 +2113,85 @@ namespace TestConsole.Programs
         {
             Console.Clear();
             Console.WriteLine("Player stress test started");
-            var betCount = 50;
+            var betCount = 30;
             var loginURL = await GetLoginUrl();
+            var tranasactionIds = new List<string>();
+            var settleAmounts = new List<double>();
+            
             if (await NormalAuthentication(loginURL))
             {
+                Console.WriteLine($"Balance{_previousBalance}");
+                _expectedBalances.Add(_previousBalance);
+                for (var bet = 0; bet < betCount; bet++)
+                {
+                    _expectedBalances.Add(_expectedBalances[bet] - 2);
+                }
+                for (var bet = 0; bet < betCount; bet++)
+                {
+                    var amountToSettle = new Random().Next(0, 100) < 50 ? 8 : 0;
+                    _expectedBalances.Add(_expectedBalances.LastOrDefault() + amountToSettle);
+                    settleAmounts.Add(amountToSettle);
+                }
                 for (var bet = 0; bet < betCount; bet++)
                 {
                     Console.WriteLine($"Bet {bet + 1} of {betCount} -------------------------------------------");
-                    var placeBetResult = await Debit("");
-                    //if (!placeBetResult)
-                    //{
-                    //    Console.WriteLine($"PlaceBet failed on bet {bet + 1}");
-                    //    return;
-                    //}
-                    var settleResult = await Credit("");
-                    //if (!settleResult)
-                    //{
-                    //    Console.WriteLine($"Settle failed on bet {bet + 1}");
-                    //    return;
-                    //}
+                    var placeBetResult = await Debit("", betAmount: 2);
+                    tranasactionIds.Add(_previousTransactionId);
                     Console.WriteLine($"Balance{_previousBalance}");
                 }
+
+                var tasks = new List<Task>();
+
+                foreach (var transactionId in tranasactionIds)
+                {
+                    Console.WriteLine($"Settle -------------------------------------------");
+                    var amountToCredit = settleAmounts[tranasactionIds.IndexOf(transactionId)];
+                    tasks.Add(Task.Run(() => Credit("", settleAmount: amountToCredit, transactionId: transactionId)));
+                    Console.WriteLine($"Balance{_previousBalance}");
+                    await Task.Delay(TimeSpan.FromMilliseconds(20));
+
+                }
+
+                Task.WaitAll(tasks.ToArray());
 
                 Console.WriteLine("Player stress test completed successfully \n \n");
 
                 Console.WriteLine($"{JsonConvert.SerializeObject(_reports)}");
+                _reports.ForEach(report => report.DeltaBalance = report.Balance - report.ExpectedBalance);
+                _reports = _reports.OrderBy(report => report.TimeStamp).ToList();
                 ExcelHelper.WriteDataTableToExcel(DataTableHelper.ToDataTable(_reports), $"C:\\Users\\sopheaktra.pin\\Downloads\\{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.xlsx", "BetReport");
             }
+        }
+
+        internal async Task RunTest()
+        {
+            var choise = "";
+            Console.WriteLine("Select test type:");
+            Console.WriteLine("1: For financial test");
+            Console.WriteLine("2: For 1 player stress test");
+            while (string.IsNullOrEmpty(choise))
+            {
+                var input = Console.ReadLine();
+                if(input == "1" || input == "2")
+                {
+                    choise = input;
+
+                }
+                else
+                {
+                    Console.WriteLine("Invalid choise");
+                }
+            }
+            if(choise == "1")
+            {
+                await TestFinancial();
+            }
+            if(choise == "2")
+            {
+                await PlayerStressTest();
+            }
+
+            Console.ReadKey();
         }
     }
 
@@ -1907,6 +2215,9 @@ namespace TestConsole.Programs
         public long TimeStamp { get; set; }
         public int BalanceIndex { get; internal set; }
         public int TimeStampIndex { get; internal set; }
+        public double ExpectedBalance { get; internal set; }
+        public double DeltaBalance { get; internal set; }
+        public long Ping { get; internal set; }
     }
 
     public class ProviderCancelRequest
