@@ -1445,9 +1445,9 @@ namespace TestConsole.Programs
                 BalanceIndex = GetBalanceIndex(response.Balance),
                 TimeStampIndex = GetTimeStampIndex(response.Timestamp),
                 Balance = response.Balance,
-                TimeStamp = response.Timestamp,
-                ExpectedBalance = _expectedBalances.Count > 0 ? _expectedBalances[_reports.Count+1] : 0,
-                Ping = deltaMS,
+                TimeStamp = response.Timestamp.ToString(),
+                ExpectedBalance = 0,
+                Ping = deltaMS.ToString(),
             };
             var isAddSuccess = false;
             while (!isAddSuccess)
@@ -1467,7 +1467,7 @@ namespace TestConsole.Programs
 
         private int GetTimeStampIndex(long timestamp)
         {
-            var report = _reports.FirstOrDefault(report => report.TimeStamp == timestamp) ?? null;
+            var report = _reports.FirstOrDefault(report => report.TimeStamp.Equals(timestamp)) ?? null;
             if (report != null)
             {
                 return report.TimeStampIndex;
@@ -1946,9 +1946,9 @@ namespace TestConsole.Programs
                 BalanceIndex = GetBalanceIndex(response.Balance),
                 TimeStampIndex = GetTimeStampIndex(response.Timestamp),
                 Balance = response.Balance,
-                TimeStamp = response.Timestamp,
-                ExpectedBalance = _expectedBalances.Count > 0 ? _expectedBalances[_reports.Count + 1] : 0,
-                Ping = deltaMS,
+                TimeStamp = response.Timestamp.ToString(),
+                ExpectedBalance = 0,
+                Ping = deltaMS.ToString(),
             };
 
             _reports.Add(newReport);
@@ -2148,7 +2148,7 @@ namespace TestConsole.Programs
                     var amountToCredit = settleAmounts[tranasactionIds.IndexOf(transactionId)];
                     tasks.Add(Task.Run(() => Credit("", settleAmount: amountToCredit, transactionId: transactionId)));
                     Console.WriteLine($"Balance{_previousBalance}");
-                    await Task.Delay(TimeSpan.FromMilliseconds(20));
+                    await Task.Delay(TimeSpan.FromMilliseconds(1));
 
                 }
 
@@ -2157,8 +2157,25 @@ namespace TestConsole.Programs
                 Console.WriteLine("Player stress test completed successfully \n \n");
 
                 Console.WriteLine($"{JsonConvert.SerializeObject(_reports)}");
-                _reports.ForEach(report => report.DeltaBalance = report.Balance - report.ExpectedBalance);
                 _reports = _reports.OrderBy(report => report.TimeStamp).ToList();
+                _reports.ForEach(r =>
+                {
+                    var currenctIndex = _reports.IndexOf(r);
+                    if (currenctIndex != 0 && r.DebitTransactionId.StartsWith('P'))
+                    {
+                        var previousReport = _reports[currenctIndex - 1];
+                        r.ExpectedBalance = previousReport.ExpectedBalance - r.Bet;
+                        r.DeltaBalance = r.Balance - r.ExpectedBalance;
+                    }
+                    else if (currenctIndex != 0 && r.DebitTransactionId.StartsWith('c'))
+                    {
+                        var previousReport = _reports[currenctIndex - 1];
+                        r.ExpectedBalance = previousReport.ExpectedBalance + r.Win;
+                        r.DeltaBalance = r.Balance - r.ExpectedBalance;
+                    }
+                    
+                    r.ExpectedBalance = r.Balance;
+                });
                 ExcelHelper.WriteDataTableToExcel(DataTableHelper.ToDataTable(_reports), $"C:\\Users\\sopheaktra.pin\\Downloads\\{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.xlsx", "BetReport");
             }
         }
@@ -2212,12 +2229,12 @@ namespace TestConsole.Programs
         public string DebitTransactionId { get; set; }
         public double Win { get; set; }
         public double Balance { get; set; }
-        public long TimeStamp { get; set; }
+        public string TimeStamp { get; set; }
         public int BalanceIndex { get; internal set; }
         public int TimeStampIndex { get; internal set; }
         public double ExpectedBalance { get; internal set; }
         public double DeltaBalance { get; internal set; }
-        public long Ping { get; internal set; }
+        public string Ping { get; internal set; }
     }
 
     public class ProviderCancelRequest

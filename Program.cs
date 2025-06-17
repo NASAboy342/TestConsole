@@ -28,8 +28,11 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        var llmPractice = new LlmPractice();
-        await llmPractice.Run();
+        //var llmPractice = new LlmPractice();
+        //await llmPractice.Run();
+
+        var ezugi = new Ezugi();
+        await ezugi.RunTest();
     }
     private static async Task<string> GetMarsPublicTopDomian()
     {
