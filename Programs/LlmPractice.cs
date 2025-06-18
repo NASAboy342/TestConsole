@@ -7,34 +7,65 @@ namespace TestConsole.Programs
     {
         public async Task Run()
         {
+            List<UniqueLetter> tokens = Tokenization();
+            Console.WriteLine(JsonConvert.SerializeObject(tokens));
+        }
+
+        private List<UniqueLetter> Tokenization()
+        {
+            var tokenizeIterateTime = 30;
             var corpus = GetCorpus();
+            tokenizeIterateTime = corpus.Count;
             var vocabulary = GetSeperatedLettersFromCorpus(corpus);
-            var uniqueLetters = GetLettersAppearInCorpus(vocabulary);
-            var pairLetterCount = GetPairLetterCount(vocabulary);
-            var morstCountedLetters = GetMorstCountedLetters(pairLetterCount);
-            AddMorstCountPairLettersIntoVocabulary(morstCountedLetters, vocabulary);
-            Console.WriteLine(JsonConvert.SerializeObject(vocabulary));
+            var tokens = GetLettersAppearInCorpus(vocabulary);
+            for (var tokenizeTime = 1; tokenizeTime <= tokenizeIterateTime; tokenizeTime++)
+            {
+                var pairLetterCount = GetPairLetterCount(vocabulary);
+                var morstCountedLetters = GetMorstCountedLetters(pairLetterCount);
+                AddMorstCountPairLettersIntoVocabulary(morstCountedLetters, vocabulary);
+                UpdateToken(pairLetterCount, tokens);
+            }
+
+            return tokens;
+        }
+
+        private void UpdateToken(List<UniqueLetter> pairLetterCount, List<UniqueLetter> tokens)
+        {
+            var topCountedPair = pairLetterCount.OrderByDescending(p => p.Count).FirstOrDefault();
+            if (topCountedPair == null)
+                return;
+            var firstPartMarch = tokens.FirstOrDefault(token => token.Character.Equals(topCountedPair.FirstPart));
+            firstPartMarch.Count -= topCountedPair.Count;
+
+            var secondPartMarch = tokens.FirstOrDefault(token => token.Character.Equals(topCountedPair.SecondPart));
+            secondPartMarch.Count -= topCountedPair.Count;
+
+            tokens.Add(topCountedPair);
+            tokens.RemoveAll(token => token.Count == 0);
+            tokens = tokens.OrderBy(token => token.Character).ToList();
         }
 
         private void AddMorstCountPairLettersIntoVocabulary(string morstCountedLetters, List<List<string>> vocabulary)
         {
-            vocabulary.ForEach(word =>
+            for(var wordIndex = 0; wordIndex < vocabulary.Count;  wordIndex++)
             {
-                word.ForEach(letter =>
+                var word = vocabulary[wordIndex];
+                for(var letterIndex = 0; letterIndex < word.Count; letterIndex++)
                 {
-                    var currentLetterIndex = word.IndexOf(letter);
+                    var letter = word[letterIndex];
+                    var currentLetterIndex = letterIndex;
                     if (currentLetterIndex > 0)
                     {
                         var previousLetter = word[currentLetterIndex - 1];
                         if (previousLetter + letter == morstCountedLetters)
                         {
-                            letter = morstCountedLetters;
-                            previousLetter = "";
+                            word[letterIndex] = morstCountedLetters;
+                            word[currentLetterIndex - 1] = "";
                         }
                     }
-                });
+                }
                 word.RemoveAll(letter => string.IsNullOrEmpty(letter) || letter.Length == 0);
-            });
+            }
         }
 
         private string GetMorstCountedLetters(List<UniqueLetter> pairLetterCount)
@@ -47,28 +78,30 @@ namespace TestConsole.Programs
             var uniqueLetters = new List<UniqueLetter>();
             foreach (var word in lettersSeperatedWords)
             {
-                foreach (var letter in word)
+                for(var letterIndex = 0; letterIndex < word.Count; letterIndex++)
                 {
-                    var currentLetterIndex = word.IndexOf(letter);
-                    if (currentLetterIndex < 1)
+                    var letter = word[letterIndex];
+                    if (letterIndex < 1)
                         continue;
 
-                    var pairLetter = word[currentLetterIndex - 1] + letter;
-                    CheckIfToCountOrAdd(uniqueLetters, pairLetter);
+                    var pairLetter = word[letterIndex - 1] + letter;
+                    CheckIfToCountOrAdd(uniqueLetters, pairLetter, word[letterIndex - 1], letter);
                 }
             }
 
             return uniqueLetters.OrderByDescending(uniqueLetter => uniqueLetter.Count).ToList();
         }
 
-        private static void CheckIfToCountOrAdd(List<UniqueLetter> uniqueLetters, string letter)
+        private static void CheckIfToCountOrAdd(List<UniqueLetter> uniqueLetters, string letter, string firstPart, string secondPart)
         {
             if (!uniqueLetters.Any(uniqueLetter => uniqueLetter.Character.Equals(letter)))
             {
                 uniqueLetters.Add(new UniqueLetter
                 {
                     Character = letter,
-                    Count = 1
+                    Count = 1,
+                    FirstPart = firstPart,
+                    SecondPart = secondPart
                 });
             }
             else
@@ -88,7 +121,7 @@ namespace TestConsole.Programs
             {
                 foreach (var letter in word)
                 {
-                    CheckIfToCountOrAdd(uniqueLetters, letter);
+                    CheckIfToCountOrAdd(uniqueLetters, letter, letter, "");
                 }
             }
             
@@ -112,13 +145,9 @@ namespace TestConsole.Programs
 
         private static List<string> GetCorpus()
         {
-            return new List<string>()
-            {
-                "email",
-                "emailing",
-                "imagine",
-                "imagined",
-            };
+            var data = "In 50 F.E. (\"Foundation Era\"), the Encyclopedia Foundation, tasked with preserving the Empire's knowledge, is established on the mineral-poor agricultural planet Terminus, and occupies the planet's single large settlement, Terminus City. The city's affairs are managed by its first Mayor, Salvor Hardin, under the authority of the Board, hidebound scholars whose main concern is publishing the Encyclopedia. Hardin believes Terminus is in danger of conquest by the four neighboring prefectures of the Empire, the strongest of which is Anacreon. When the Board resists Hardin's efforts against the threat, he and his chief advisor, Yohan Lee, seize power. Hardin then visits the three weaker kingdoms and convinces them that they must unite to prevent the Foundation's nuclear technology from falling into the hands of Anacreon alone. The three issue a joint ultimatum that all be allowed to receive nuclear power from Terminus, making it indispensable to all and protected by a delicate balance of power. A vault containing Seldon's recorded messages opens, and reveals that he had planned this whole course of events by means of psychohistory, and that the Foundation is destined to grow into a new galactic empire.";
+            var corpus = data.Split(' ').ToList();
+            return corpus;
         }
     }
 
@@ -126,5 +155,7 @@ namespace TestConsole.Programs
     {
         public string Character { get; set; }
         public int Count { get; set; }
+        public string? FirstPart { get; set; }
+        public string? SecondPart { get; set; }
     }
 }
