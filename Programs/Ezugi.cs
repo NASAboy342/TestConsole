@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json;
+﻿using MathNet.Numerics.Random;
+using Microsoft.VisualStudio.TestPlatform.ObjectModel;
+using Newtonsoft.Json;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Security.Policy;
@@ -24,6 +26,13 @@ namespace TestConsole.Programs
         private string _username = "";
         private string _currency = "";
         private List<double> _expectedBalances = new List<double>();
+
+        private readonly TestSetting _testSetting = new TestSetting()
+        {
+            IsCheckTimeStamp = false,
+            IsRandomWin = true,
+            IsCheckBalance = false,
+        };
 
         //private string _baseUrl = "https://localhost:7128";
 
@@ -1355,11 +1364,12 @@ namespace TestConsole.Programs
         private async Task<bool> Credit(string loginToken)
         {
             var transactionIdToUse =_previousTransactionId;
+            var randomWinlose = (new Random().NextBoolean() ? (_previousStake + 1) : 0);
             var request = new ProviderSettleRequest
             {
                 BetTypeID = 1,
                 Currency = _currency,
-                CreditAmount = (_previousStake + 1),
+                CreditAmount = _testSetting.IsRandomWin ? randomWinlose : (_previousStake + 1),
                 GameId = 1,
                 OperatorId = _operatorId,
                 PlatformId = 0,
@@ -1404,12 +1414,12 @@ namespace TestConsole.Programs
                 return false;
             }
             var delta = Math.Abs((_previousBalance + request.CreditAmount) - response.Balance);
-            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance + request.CreditAmount) && delta > 0.1)
+            if (_testSetting.IsCheckBalance && response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance + request.CreditAmount) && delta > 0.1)
             {
                 Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance + request.CreditAmount)}. response: {JsonConvert.SerializeObject(response)}");
                 return false;
             }
-            if (response.Timestamp <= request.Timestamp)
+            if (_testSetting.IsCheckTimeStamp && response.Timestamp <= request.Timestamp)
             {
                 Console.WriteLine("Timestamp should responce bigger than request Timestamp");
                 return false;
@@ -1426,6 +1436,15 @@ namespace TestConsole.Programs
             }
 
             _previousBalance = response.Balance;
+
+            _reports.Add(new BetReport
+            {
+                Balance = response.Balance,
+                Win = request.CreditAmount,
+                Currency = response.Currency,
+                DebitTransactionId = request.TransactionId,
+                TimeStamp = request.Timestamp.ToString(),
+            });
             Pass(); return true;
         }
 
@@ -1889,11 +1908,13 @@ namespace TestConsole.Programs
 
             var response = await PlaceBet(request);
 
+            
+
             //PushResultToReport(response, request);
 
             if (response.ErrorCode != 0)
             {
-                Console.WriteLine($"Error: {response.ErrorDescription}");
+                Console.WriteLine($"ErrorCode should be: 0. response: {JsonConvert.SerializeObject(response)}");
                 return false;
             }
             if (response.RoundId != request.RoundId)
@@ -1906,12 +1927,12 @@ namespace TestConsole.Programs
                 Console.WriteLine($"TransactionId should be the same. response: {JsonConvert.SerializeObject(response)}");
                 return false;
             }
-            if (response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount))
+            if (_testSetting.IsCheckBalance && response.Balance != Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount))
             {
                 Console.WriteLine($"Balance should be {Get2DigitsAfterDecimalPoint(_previousBalance - request.DebitAmount)}. response: {JsonConvert.SerializeObject(response)}");
                 return false;
             }
-            if (response.Timestamp <= request.Timestamp)
+            if (_testSetting.IsCheckTimeStamp && response.Timestamp <= request.Timestamp)
             {
                 Console.WriteLine($"Timestamp should responce bigger than request Timestamp response: {response.Timestamp}, request: {request.Timestamp}. smaller by: {(DateTimeOffset.FromUnixTimeMilliseconds(response.Timestamp) - DateTimeOffset.FromUnixTimeMilliseconds(request.Timestamp)).TotalMilliseconds}ms");
                 return false;
@@ -1927,6 +1948,16 @@ namespace TestConsole.Programs
                 return false;
             }
             _previousBalance = response.Balance;
+
+            _reports.Add(new BetReport
+            {
+                Balance = response.Balance,
+                Bet = request.DebitAmount,
+                Currency = response.Currency,
+                DebitTransactionId = request.TransactionId,
+                TimeStamp = request.Timestamp.ToString(),
+            });
+
             Pass(); return true;
         }
 
@@ -2022,7 +2053,7 @@ namespace TestConsole.Programs
                 Console.WriteLine($"Token should not return the same");
                 return false;
             }
-            if (response.Timestamp <= request.Timestamp)
+            if (_testSetting.IsCheckTimeStamp && response.Timestamp <= request.Timestamp)
             {
                 Console.WriteLine($"Timestamp {response.Timestamp} should responce bigger than request Timestamp {request.Timestamp}. smaller by: {(DateTimeOffset.FromUnixTimeMilliseconds(response.Timestamp) - DateTimeOffset.FromUnixTimeMilliseconds(request.Timestamp)).TotalMilliseconds}ms");
                 return false;
@@ -2148,8 +2179,6 @@ namespace TestConsole.Programs
                     var amountToCredit = settleAmounts[tranasactionIds.IndexOf(transactionId)];
                     tasks.Add(Task.Run(() => Credit("", settleAmount: amountToCredit, transactionId: transactionId)));
                     Console.WriteLine($"Balance{_previousBalance}");
-                    await Task.Delay(TimeSpan.FromMilliseconds(1));
-
                 }
 
                 Task.WaitAll(tasks.ToArray());
@@ -2186,13 +2215,13 @@ namespace TestConsole.Programs
             Console.WriteLine("Select test type:");
             Console.WriteLine("1: For financial test");
             Console.WriteLine("2: For 1 player stress test");
+            Console.WriteLine("3: For balance consistency test");
             while (string.IsNullOrEmpty(choise))
             {
                 var input = Console.ReadLine();
-                if(input == "1" || input == "2")
+                if(input == "1" || input == "2" || input == "3")
                 {
                     choise = input;
-
                 }
                 else
                 {
@@ -2207,8 +2236,85 @@ namespace TestConsole.Programs
             {
                 await PlayerStressTest();
             }
+            if(choise == "3")
+            {
+                await BalanceConsistencyTest();
+            }
 
             Console.ReadKey();
+        }
+
+        private async Task BalanceConsistencyTest()
+        {
+            Console.WriteLine("Balance Consitency Test");
+            var loginURL = await GetLoginUrl();
+            var betCount = 90;
+            var isFail = false;
+
+            if(await NormalAuthentication(loginURL))
+            {
+                Console.WriteLine($"Initial Balance: {_previousBalance}");
+                _reports.Add(new BetReport { Balance = _previousBalance, TimeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString() });
+                await Task.Delay(TimeSpan.FromSeconds(5));
+
+                var tasks = new List<Task>();
+
+                for (var i = 1; i <= betCount; i++)
+                {
+                    tasks.Add(Task.Run(async () =>
+                    {
+                        Console.WriteLine($"Bet:{i} ===========================");
+
+                        if (!(await Debit(loginURL)))
+                        {
+                            isFail = true;
+                        }
+                        Console.WriteLine($"Bet success with transactionId: {_previousTransactionId} Balance: {_previousBalance}");
+                        Console.WriteLine($"Settling...");
+                        if (!(await Credit(loginURL)))
+                        {
+                            isFail = true;
+                        }
+
+                        Console.WriteLine($"Bet:{i} Success with Balance: {_previousBalance} ===========================");
+                    }));
+                    await Task.Delay(TimeSpan.FromMilliseconds(100));
+                }
+                Console.WriteLine($"There are {tasks.Count} tasks");
+                while(!tasks.All(task => task.IsCompleted))
+                {
+
+                }
+            }
+            else
+            {
+                isFail = true;
+            }
+
+            _reports = _reports.OrderBy(r => r.TimeStamp).ToList();
+            ExcelHelper.WriteDataTableToExcel(DataTableHelper.ToDataTable(_reports), $"C:\\Users\\sopheaktra.pin\\Downloads\\{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}.xlsx", "BetReport");
+
+
+            if (isFail)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Balance Consitency Test Fail");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("Balance Consitency Test Pass");
+                Console.ResetColor();
+            }
+            Console.WriteLine($"Use this fomula: =R2-G3+J3 and =K3-R3 ");
+        }
+
+        private class TestSetting
+        {
+            public bool IsCheckTimeStamp { get; internal set; }
+            public bool IsRandomWin { get; internal set; }
+            public bool IsCheckBalance { get; internal set; }
         }
     }
 

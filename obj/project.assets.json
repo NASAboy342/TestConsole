@@ -1494,6 +1494,25 @@
           }
         }
       },
+      "Selenium.WebDriver/4.34.0": {
+        "type": "package",
+        "dependencies": {
+          "System.Text.Json": "8.0.5"
+        },
+        "compile": {
+          "lib/netstandard2.0/WebDriver.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/WebDriver.dll": {
+            "related": ".xml"
+          }
+        },
+        "build": {
+          "buildTransitive/Selenium.WebDriver.targets": {}
+        }
+      },
       "SharpAvi/3.0.0": {
         "type": "package",
         "compile": {
@@ -2614,7 +2633,7 @@
           }
         }
       },
-      "System.Text.Json/8.0.0": {
+      "System.Text.Json/8.0.5": {
         "type": "package",
         "dependencies": {
           "System.Text.Encodings.Web": "8.0.0"
@@ -5807,6 +5826,28 @@
         "runtimes/ubuntu.16.10-x64/native/System.Security.Cryptography.Native.OpenSsl.so"
       ]
     },
+    "Selenium.WebDriver/4.34.0": {
+      "sha512": "uNx+GF7WugHDPV2zpGDPlbSn3STQ6n0xFskFSeJdhEuuUTkIDfAsYnjVUiQidWDpy7mKzTz53ae7Thjghl3dng==",
+      "type": "package",
+      "path": "selenium.webdriver/4.34.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "build/Selenium.WebDriver.targets",
+        "buildTransitive/Selenium.WebDriver.targets",
+        "icon.png",
+        "lib/net8.0/WebDriver.dll",
+        "lib/net8.0/WebDriver.xml",
+        "lib/netstandard2.0/WebDriver.dll",
+        "lib/netstandard2.0/WebDriver.xml",
+        "manager/linux/selenium-manager",
+        "manager/macos/selenium-manager",
+        "manager/windows/selenium-manager.exe",
+        "selenium.webdriver.4.34.0.nupkg.sha512",
+        "selenium.webdriver.nuspec"
+      ]
+    },
     "SharpAvi/3.0.0": {
       "sha512": "Lqxh7CSX23cGiRkqbGRvwRl1XitL8YSwk3SxGP0wxl84G/32Q+JInl8/ja/KhwLqCN1bzCPVgf3v+xN1aIFEGQ==",
       "type": "package",
@@ -8497,10 +8538,10 @@
         "useSharedDesignerContext.txt"
       ]
     },
-    "System.Text.Json/8.0.0": {
-      "sha512": "OdrZO2WjkiEG6ajEFRABTRCi/wuXQPxeV6g8xvUJqdxMvvuCCEk86zPla8UiIQJz3durtUEbNyY/3lIhS0yZvQ==",
+    "System.Text.Json/8.0.5": {
+      "sha512": "0f1B50Ss7rqxXiaBJyzUu9bWFOO2/zSlifZ/UNMdiIpDYe4cY4LQQicP4nirK1OS31I43rn062UIJ1Q9bpmHpg==",
       "type": "package",
-      "path": "system.text.json/8.0.0",
+      "path": "system.text.json/8.0.5",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -8565,7 +8606,7 @@
         "lib/net8.0/System.Text.Json.xml",
         "lib/netstandard2.0/System.Text.Json.dll",
         "lib/netstandard2.0/System.Text.Json.xml",
-        "system.text.json.8.0.0.nupkg.sha512",
+        "system.text.json.8.0.5.nupkg.sha512",
         "system.text.json.nuspec",
         "useSharedDesignerContext.txt"
       ]
@@ -8868,6 +8909,7 @@
       "Microsoft.Extensions.Hosting.Abstractions >= 8.0.0",
       "NPOI >= 2.7.1",
       "Newtonsoft.Json >= 13.0.3",
+      "Selenium.WebDriver >= 4.34.0",
       "Spectre.Console >= 0.48.0",
       "System.IdentityModel.Tokens.Jwt >= 8.3.1",
       "WindowFormExtended >= 1.0.0",
@@ -8968,6 +9010,10 @@
           "Newtonsoft.Json": {
             "target": "Package",
             "version": "[13.0.3, )"
+          },
+          "Selenium.WebDriver": {
+            "target": "Package",
+            "version": "[4.34.0, )"
           },
           "Spectre.Console": {
             "target": "Package",

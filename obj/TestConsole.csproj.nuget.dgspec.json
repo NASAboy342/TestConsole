@@ -95,6 +95,10 @@
               "target": "Package",
               "version": "[13.0.3, )"
             },
+            "Selenium.WebDriver": {
+              "target": "Package",
+              "version": "[4.34.0, )"
+            },
             "Spectre.Console": {
               "target": "Package",
               "version": "[0.48.0, )"

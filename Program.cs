@@ -6,6 +6,9 @@ using MiNET.UI;
 using Newtonsoft.Json;
 using NPOI.HPSF;
 using NPOI.SS.Formula.Functions;
+using OpenQA.Selenium;
+using OpenQA.Selenium.Edge;
+using OpenQA.Selenium.Support.UI;
 using Org.BouncyCastle.Asn1.Mozilla;
 using Org.BouncyCastle.Crmf;
 using System;
@@ -28,12 +31,113 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        //var llmPractice = new LlmPractice();
-        //await llmPractice.Run();
+        // Create Edge driver
+        var options = new EdgeOptions();
+        using var driver = new EdgeDriver(options);
 
-        var ezugi = new Ezugi();
-        await ezugi.RunTest();
+        try
+        {
+            // 1. Navigate to Google
+            driver.Navigate().GoToUrl("https://www.google.com");
+
+            await Task.Delay(TimeSpan.FromSeconds(5));
+
+            // 2. Accept cookies if the popup shows (optional, Google often shows one)
+            try
+            {
+                var agreeButton = driver.FindElement(By.XPath("//button[contains(text(),'Accept all')]"));
+                agreeButton.Click();
+            }
+            catch (NoSuchElementException) { /* no popup shown */ }
+
+            await Task.Delay(TimeSpan.FromSeconds(5));
+
+            // 3. Search for "next Christmas day"
+            var searchBox = driver.FindElement(By.Name("q"));
+            searchBox.SendKeys("next Christmas day");
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            searchBox.SendKeys(Keys.Enter);
+
+            // 4. Wait for the result
+            var wait = new WebDriverWait(driver, TimeSpan.FromSeconds(10));
+            var result = wait.Until(d =>
+                d.FindElement(By.CssSelector("div[data-attrid='wa:/description']")) ??
+                d.FindElement(By.CssSelector("div[data-attrid='kc:/time/holiday:date']")) ??
+                d.FindElement(By.CssSelector("div[jsname='W297wb']"))
+            );
+
+            // 5. Output the result
+            Console.WriteLine("Top result: " + result.Text);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Something went wrong: " + ex.Message);
+        }
+        finally
+        {
+            // Close browser after short delay
+            System.Threading.Thread.Sleep(5000);
+            driver.Quit();
+        }
     }
+    //var exform = GetExcelToSqlValueStatement(new List<ExcelColumn>
+    //{
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Int, Name = "A"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "B"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "C"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "D"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "E"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "F"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "G"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "H"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "I"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.DateTime, Name = "J"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "K"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.DateTime, Name = "L"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "M"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Int, Name = "N"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Int, Name = "O"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "P"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "Q"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.DateTime, Name = "R"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "S"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "T"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "U"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "V"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "W"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "X"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "Y"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "Z"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AA"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AB"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AC"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AD"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AE"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AF"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AG"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AH"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AI"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AJ"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AK"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AL"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AM"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AN"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AO"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AP"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AQ"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AR"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AS"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AT"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AU"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AV"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AW"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AX"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "AY"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Bit, Name = "AZ"},
+    //    new ExcelColumn(){DataType = EnumSqlDateType.Nvarchar, Name = "BA"}
+    //});
+
+    //Write(exform);
     private static async Task<string> GetMarsPublicTopDomian()
     {
         var marsPublicDomain = "lmd.xijiangx.com";
@@ -291,7 +395,7 @@ internal class Program
                     sqlStatement.Append($"'\"&{column.Name}{atRow}&\"',");
                     break;
                 case EnumSqlDateType.Bit:
-                    sqlStatement.Append($"\"{column.Name}{atRow}\",");
+                    sqlStatement.Append($"\"&IF({column.Name}{atRow}=\"TRUE\", 1, 0)&\",");
                     break;
             }
         }
@@ -548,7 +652,7 @@ public enum EnumSqlDateType
 public class ExcelColumn
 {
     public EnumSqlDateType DataType { get; set; }
-    public char Name { get; set; }
+    public string Name { get; set; }
 }
 
 public class DisposableClass : IDisposable
