@@ -8917,32 +8917,25 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\sopheaktra.pin\\.nuget\\packages\\": {},
-    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
+    "/Users/pinsopheaktra/.nuget/packages/": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\LocalTests\\TestConsole\\TestConsole.csproj",
+      "projectUniqueName": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
       "projectName": "TestConsole",
-      "projectPath": "D:\\LocalTests\\TestConsole\\TestConsole.csproj",
-      "packagesPath": "C:\\Users\\sopheaktra.pin\\.nuget\\packages\\",
-      "outputPath": "D:\\LocalTests\\TestConsole\\obj\\",
+      "projectPath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
+      "packagesPath": "/Users/pinsopheaktra/.nuget/packages/",
+      "outputPath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/obj/",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-      ],
       "configFilePaths": [
-        "C:\\Users\\sopheaktra.pin\\AppData\\Roaming\\NuGet\\NuGet.Config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+        "/Users/pinsopheaktra/.nuget/NuGet/NuGet.Config"
       ],
       "originalTargetFrameworks": [
         "net7.0"
       ],
       "sources": {
-        "C:\\Program Files\\dotnet\\library-packs": {},
-        "http://nuget.remotes.local/nuget/": {},
+        "/usr/local/share/dotnet/library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -8961,7 +8954,7 @@
         "auditLevel": "low",
         "auditMode": "direct"
       },
-      "SdkAnalysisLevel": "9.0.100"
+      "SdkAnalysisLevel": "9.0.300"
     },
     "frameworks": {
       "net7.0": {
@@ -9048,7 +9041,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.102\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.301/RuntimeIdentifierGraph.json"
       }
     }
   },
