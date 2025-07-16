@@ -6,3 +6,6 @@ vs/
 bin/
 *obj/
 obj/
+obj/Debug/net7.0/TestConsole.AssemblyInfo.cs
+obj/Debug/net7.0/TestConsole.AssemblyInfo.cs
+obj/Debug/net7.0/TestConsole.AssemblyInfoInputs.cache
