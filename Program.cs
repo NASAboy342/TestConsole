@@ -2,6 +2,9 @@
 using DocumentFormat.OpenXml.Presentation;
 using IEnumerable.ForEach;
 using LibGit2Sharp;
+using LLama;
+using LLama.Common;
+using LLama.Native;
 using MiNET.UI;
 using Newtonsoft.Json;
 using NPOI.HPSF;
@@ -18,6 +21,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -26,15 +30,72 @@ using TestConsole;
 using TestConsole.Helper;
 using TestConsole.Programs;
 using TestConsole.Tests;
+using Path = System.IO.Path;
 
 internal class Program
 {
     private static async Task Main(string[] args)
     {
-        var sentry = new Sentry();
-        await sentry.NormalTest();
+        string relativePath = "model/deepseek-coder-6.7b-instruct.Q4_K_M.gguf";
+        string basePath = AppContext.BaseDirectory;
+        string modelPath = Path.Combine(basePath, relativePath);
+
+        var modelParams = new ModelParams(modelPath)
+        {
+            ContextSize = 1000,
+            GpuLayerCount = 0,
+            
+        };
+
+        var model = LLamaWeights.LoadFromFile(modelParams);
+        using var context = model.CreateContext(modelParams);
+
+        var executor = new InteractiveExecutor(context);
+        Console.WriteLine("LLM ready. Type something.");
+
+        while (true)
+        {
+            Console.Write("> ");
+            var prompt = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(prompt)) continue;
+            
+            await foreach (var result in executor.InferAsync($"<|system|>\nYou are a helpful AI coding assistant that would come with code example.\n<|user|>\n{prompt}\n<|assistant|>\n"))
+            {
+                if(string.IsNullOrWhiteSpace(result)) break;
+                Console.Write(result);
+            }
+            Console.WriteLine();
+        }
     }
-    
+
+    private static void ValidateProviderUrl(CallToXianguResponse xianguResponse)
+    {
+        if (string.IsNullOrWhiteSpace(xianguResponse.Url))
+            throw new ArgumentException("URL is empty or null.");
+
+        // Try creating the URI as-is
+        if (Uri.TryCreate(xianguResponse.Url, UriKind.Absolute, out var uriResult) &&
+            (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+        {
+            // Valid URL
+            return;
+        }
+
+        // Attempt to fix by prepending "https://" if missing
+        string fixedUrl = "https://" + xianguResponse.Url.TrimStart('/');
+
+        if (Uri.TryCreate(fixedUrl, UriKind.Absolute, out uriResult) &&
+            (uriResult.Scheme == Uri.UriSchemeHttp || uriResult.Scheme == Uri.UriSchemeHttps))
+        {
+            // Fixed and valid
+            xianguResponse.Url = fixedUrl;
+            return;
+        }
+
+        // If still invalid, throw
+        throw new UriFormatException($"The URL '{xianguResponse.Url}' is invalid and could not be fixed.");
+    }
+
     private static async Task<string> GetMarsPublicTopDomian()
     {
         var marsPublicDomain = "lmd.xijiangx.com";
@@ -322,7 +383,7 @@ internal class Program
             Console.WriteLine($"{DateTime.Now - startTime}");
         }
         var random = new Random();
-        var st = random.Next(1, 100); 
+        var st = random.Next(1, 100);
         return new List<string> { $"String {st}" };
     }
     private static string GetRandomString()
@@ -330,7 +391,7 @@ internal class Program
         var random = new Random();
         var st = random.Next(1, 100);
         var startTime = DateTime.Now;
-        while(DateTime.Now - startTime < TimeSpan.FromSeconds(1))
+        while (DateTime.Now - startTime < TimeSpan.FromSeconds(1))
         {
 
         }
@@ -554,7 +615,8 @@ public class ExcelColumn
 
 public class DisposableClass : IDisposable
 {
-    public DisposableClass(){
+    public DisposableClass()
+    {
         Console.WriteLine("class start");
     }
     public void Dispose()
@@ -625,4 +687,9 @@ public static class DescriptionExtension
         var attrs = memberInfo[0].GetCustomAttributes(typeof(DescriptionAttribute), false);
         return attrs.Length > 0 ? ((DescriptionAttribute)attrs[0]).Description : enumParameter.ToString();
     }
+}
+
+public class CallToXianguResponse
+{
+    public string Url { get; set; }
 }

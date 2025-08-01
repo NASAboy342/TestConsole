@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "cvthRJKFh/k=",
+  "dgSpecHash": "SpMK6dUxqKs=",
   "success": true,
   "projectFilePath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
   "expectedPackageFiles": [
@@ -8,6 +8,7 @@
     "/Users/pinsopheaktra/.nuget/packages/asyncenumerator/4.0.2/asyncenumerator.4.0.2.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/bouncycastle.cryptography/2.3.1/bouncycastle.cryptography.2.3.1.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/closedxml/0.102.3/closedxml.0.102.3.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/communitytoolkit.highperformance/8.4.0/communitytoolkit.highperformance.8.4.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/crc32.net/1.2.0/crc32.net.1.2.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/documentformat.openxml/2.16.0/documentformat.openxml.2.16.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/enums.net/4.0.1/enums.net.4.0.1.nupkg.sha512",
@@ -20,12 +21,14 @@
     "/Users/pinsopheaktra/.nuget/packages/libgit2sharp/0.31.0/libgit2sharp.0.31.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/libgit2sharp.nativebinaries/2.0.323/libgit2sharp.nativebinaries.2.0.323.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/libnoise.netstandart/0.2.0/libnoise.netstandart.0.2.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/llamasharp/0.24.0/llamasharp.0.24.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/llamasharp.backend.cpu/0.24.0/llamasharp.backend.cpu.0.24.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/log4net/2.0.14/log4net.2.0.14.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/mathnet.numerics.signed/5.0.0/mathnet.numerics.signed.5.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/maybe.net/1.0.123/maybe.net.1.0.123.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/microsoft.bcl.asyncinterfaces/8.0.0/microsoft.bcl.asyncinterfaces.8.0.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/microsoft.bcl.asyncinterfaces/9.0.3/microsoft.bcl.asyncinterfaces.9.0.3.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.bcl.memory/9.0.0/microsoft.bcl.memory.9.0.0.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/microsoft.bcl.timeprovider/8.0.1/microsoft.bcl.timeprovider.8.0.1.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.ai.abstractions/9.5.0-preview.1.25262.9/microsoft.extensions.ai.abstractions.9.5.0-preview.1.25262.9.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.configuration/8.0.0/microsoft.extensions.configuration.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.configuration.abstractions/8.0.0/microsoft.extensions.configuration.abstractions.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.configuration.binder/8.0.0/microsoft.extensions.configuration.binder.8.0.0.nupkg.sha512",
@@ -35,7 +38,7 @@
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.configuration.json/8.0.0/microsoft.extensions.configuration.json.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.configuration.usersecrets/8.0.0/microsoft.extensions.configuration.usersecrets.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.dependencyinjection/8.0.0/microsoft.extensions.dependencyinjection.8.0.0.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/8.0.0/microsoft.extensions.dependencyinjection.abstractions.8.0.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.dependencyinjection.abstractions/9.0.3/microsoft.extensions.dependencyinjection.abstractions.9.0.3.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.diagnostics/8.0.0/microsoft.extensions.diagnostics.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.diagnostics.abstractions/8.0.0/microsoft.extensions.diagnostics.abstractions.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.fileproviders.abstractions/8.0.0/microsoft.extensions.fileproviders.abstractions.8.0.0.nupkg.sha512",
@@ -44,7 +47,7 @@
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.hosting/8.0.0/microsoft.extensions.hosting.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.hosting.abstractions/8.0.0/microsoft.extensions.hosting.abstractions.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.logging/8.0.0/microsoft.extensions.logging.8.0.0.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.logging.abstractions/8.0.0/microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.logging.abstractions/9.0.3/microsoft.extensions.logging.abstractions.9.0.3.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.logging.configuration/8.0.0/microsoft.extensions.logging.configuration.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.logging.console/8.0.0/microsoft.extensions.logging.console.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/microsoft.extensions.logging.debug/8.0.0/microsoft.extensions.logging.debug.8.0.0.nupkg.sha512",
@@ -101,7 +104,7 @@
     "/Users/pinsopheaktra/.nuget/packages/system.collections.concurrent/4.3.0/system.collections.concurrent.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.configuration.configurationmanager/6.0.0/system.configuration.configurationmanager.6.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.diagnostics.debug/4.3.0/system.diagnostics.debug.4.3.0.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/system.diagnostics.diagnosticsource/8.0.0/system.diagnostics.diagnosticsource.8.0.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.diagnostics.diagnosticsource/9.0.3/system.diagnostics.diagnosticsource.9.0.3.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.diagnostics.eventlog/8.0.0/system.diagnostics.eventlog.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.diagnostics.tracing/4.3.0/system.diagnostics.tracing.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.drawing.common/6.0.0/system.drawing.common.6.0.0.nupkg.sha512",
@@ -118,6 +121,7 @@
     "/Users/pinsopheaktra/.nuget/packages/system.memory/4.5.5/system.memory.4.5.5.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.net.http/4.3.4/system.net.http.4.3.4.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.net.primitives/4.3.0/system.net.primitives.4.3.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.numerics.tensors/9.0.3/system.numerics.tensors.9.0.3.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.reflection/4.3.0/system.reflection.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.reflection.emit.ilgeneration/4.3.0/system.reflection.emit.ilgeneration.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.reflection.emit.lightweight/4.3.0/system.reflection.emit.lightweight.4.3.0.nupkg.sha512",
@@ -127,7 +131,7 @@
     "/Users/pinsopheaktra/.nuget/packages/system.reflection.typeextensions/4.3.0/system.reflection.typeextensions.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.resources.resourcemanager/4.3.0/system.resources.resourcemanager.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.runtime/4.3.1/system.runtime.4.3.1.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/system.runtime.compilerservices.unsafe/6.0.0/system.runtime.compilerservices.unsafe.6.0.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.runtime.compilerservices.unsafe/5.0.0/system.runtime.compilerservices.unsafe.5.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.runtime.extensions/4.3.0/system.runtime.extensions.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.runtime.handles/4.3.0/system.runtime.handles.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.runtime.interopservices/4.3.0/system.runtime.interopservices.4.3.0.nupkg.sha512",
@@ -147,7 +151,7 @@
     "/Users/pinsopheaktra/.nuget/packages/system.text.encoding/4.3.0/system.text.encoding.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.text.encoding.codepages/5.0.0/system.text.encoding.codepages.5.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.text.encodings.web/8.0.0/system.text.encodings.web.8.0.0.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/system.text.json/8.0.5/system.text.json.8.0.5.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.text.json/8.0.0/system.text.json.8.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.text.regularexpressions/4.3.1/system.text.regularexpressions.4.3.1.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.threading/4.3.0/system.threading.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.threading.tasks/4.3.0/system.threading.tasks.4.3.0.nupkg.sha512",
@@ -160,37 +164,25 @@
     {
       "code": "NU1701",
       "level": "Warning",
-      "message": "Package 'LibGit2Sharp 0.31.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net7.0'. This package may not be fully compatible with your project.",
-      "projectPath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
-      "warningLevel": 1,
-      "filePath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
-      "libraryId": "LibGit2Sharp",
-      "targetGraphs": [
-        "net7.0"
-      ]
-    },
-    {
-      "code": "NU1701",
-      "level": "Warning",
-      "message": "Package 'WindowFormExtended 1.0.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net7.0'. This package may not be fully compatible with your project.",
+      "message": "Package 'WindowFormExtended 1.0.0' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.",
       "projectPath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
       "warningLevel": 1,
       "filePath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
       "libraryId": "WindowFormExtended",
       "targetGraphs": [
-        "net7.0"
+        "net8.0"
       ]
     },
     {
       "code": "NU1701",
       "level": "Warning",
-      "message": "Package 'YummyConsole 1.0.6468.21037' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net7.0'. This package may not be fully compatible with your project.",
+      "message": "Package 'YummyConsole 1.0.6468.21037' was restored using '.NETFramework,Version=v4.6.1, .NETFramework,Version=v4.6.2, .NETFramework,Version=v4.7, .NETFramework,Version=v4.7.1, .NETFramework,Version=v4.7.2, .NETFramework,Version=v4.8, .NETFramework,Version=v4.8.1' instead of the project target framework 'net8.0'. This package may not be fully compatible with your project.",
       "projectPath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
       "warningLevel": 1,
       "filePath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
       "libraryId": "YummyConsole",
       "targetGraphs": [
-        "net7.0"
+        "net8.0"
       ]
     }
   ]

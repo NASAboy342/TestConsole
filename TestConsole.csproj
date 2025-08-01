@@ -2,13 +2,22 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="words.txt" />
+    <None Update="model\llama-2-7b-chat.Q4_0.gguf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="Native\libllama.dylib">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="model\llama-2-7b-chat.Q4_K_M.gguf">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +33,8 @@
     <PackageReference Include="FreeSpire.XLS" Version="14.2.0" />
     <PackageReference Include="IEnumerable.ForEach" Version="1.0.0" />
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
+    <PackageReference Include="LLamaSharp" Version="0.24.0" />
+    <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.24.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
     <PackageReference Include="MiNET" Version="1.0.2304" />
@@ -34,6 +45,10 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
     <PackageReference Include="WindowFormExtended" Version="1.0.0" />
     <PackageReference Include="YummyConsole" Version="1.0.6468.21037" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="model\" />
   </ItemGroup>
 
 </Project>
