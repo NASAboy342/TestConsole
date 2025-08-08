@@ -14,6 +14,7 @@ using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
 using Org.BouncyCastle.Asn1.Mozilla;
 using Org.BouncyCastle.Crmf;
+using SixLabors.ImageSharp.Processing;
 using System;
 using System.ComponentModel;
 using System.Data;
@@ -25,6 +26,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Web;
 using TestConsole;
 using TestConsole.Helper;
@@ -36,36 +38,127 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        string relativePath = "model/deepseek-coder-6.7b-instruct.Q4_K_M.gguf";
-        string basePath = AppContext.BaseDirectory;
-        string modelPath = Path.Combine(basePath, relativePath);
+        using var httpClient = new HttpClient();
 
-        var modelParams = new ModelParams(modelPath)
+        // 1️⃣ GET from first API
+        string getUrl = "https://api-prod.tabletmm.com/api/seamless/list-game-idnlive?provider=idnslot";
+        var getResponse = await httpClient.GetStringAsync(getUrl);
+
+        var idnGames = JsonConvert.DeserializeObject<List<IdnGame>>(getResponse);
+        Console.WriteLine("🎯 IDN Games:");
+
+        // 2️⃣ POST to second API
+        string postUrl = "https://capi-uat-land.techbodia.dev/Common/GetAllGames";
+        var postBody = new
         {
-            ContextSize = 1000,
-            GpuLayerCount = 0,
-            
+            gpId = 1091,
+            isGetAll = false,
+            webId = 0
         };
+        string jsonBody = JsonConvert.SerializeObject(postBody);
+        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+        var postResponse = await httpClient.PostAsync(postUrl, content);
+        var postJson = await postResponse.Content.ReadAsStringAsync();
 
-        var model = LLamaWeights.LoadFromFile(modelParams);
-        using var context = model.CreateContext(modelParams);
+        var allGames = JsonConvert.DeserializeObject<Dictionary<string, List<PlatformGame>>>(postJson);
 
-        var executor = new InteractiveExecutor(context);
-        Console.WriteLine("LLM ready. Type something.");
-
-        while (true)
+        foreach (var group in allGames["1091"])
         {
-            Console.Write("> ");
-            var prompt = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(prompt)) continue;
-            
-            await foreach (var result in executor.InferAsync($"<|system|>\nYou are a helpful AI coding assistant that would come with code example.\n<|user|>\n{prompt}\n<|assistant|>\n"))
+            var url = idnGames.FirstOrDefault(g => g.gameId == group.GameCode)?.image ?? "";
+            if (!string.IsNullOrEmpty(url))
             {
-                if(string.IsNullOrWhiteSpace(result)) break;
-                Console.Write(result);
+                // the url is image url
+                // download the image into the downloads folder/IDNSlot/{group.GameId}/{g.gameId}.png
+                // if folder does not exist, create it
+
+                try
+                {
+                    // Build the folder path
+                    string downloadsFolder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        "Downloads", "IDNSlot", group.GameId.ToString());
+
+                    // Ensure the directory exists
+                    Directory.CreateDirectory(downloadsFolder);
+
+                    string original = group.GameNameInfos.FirstOrDefault().GameName;
+        
+                    // Remove everything except letters and numbers
+                    string gamename = Regex.Replace(original, @"[^a-zA-Z0-9]", ""); 
+                    // Build the file path
+                    string fileName = $"1091_{group.GameId}_{gamename}.png";
+                    string filePath = Path.Combine(downloadsFolder, fileName);
+
+                    // Download the image
+                    var imageBytes = await httpClient.GetByteArrayAsync(url);
+                    // resize the image to 200x200 pixels
+                    // Use ImageSharp for cross-platform image resizing
+                    using (var inputStream = new MemoryStream(imageBytes))
+                    using (var image = SixLabors.ImageSharp.Image.Load(inputStream))
+                    {
+                        image.Mutate(x => x.Resize(200, 200));
+                        using (var outputStream = new MemoryStream())
+                        {
+                            image.Save(outputStream, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+                            imageBytes = outputStream.ToArray();
+                        }
+                    }
+                           
+                    
+                    // Save the image
+                    await File.WriteAllBytesAsync(filePath, imageBytes);
+
+                    Console.WriteLine($"Downloaded: {filePath}");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to download image for GameId {group.GameId}: {ex.Message}");
+                }
             }
-            Console.WriteLine();
         }
+    
+    }
+    public static string Decrypt(string input)
+    {
+        var key = Encoding.UTF8.GetBytes("0jk8ApagTweGxxyMcqGatJjkvuHU5Za2");
+        var cipherText = Convert.FromBase64String(input);
+        // Check arguments.
+        if (cipherText == null || cipherText.Length <= 0)
+            throw new ArgumentNullException("cipherText");
+        if (key == null || key.Length <= 0)
+            throw new ArgumentNullException("Key");
+
+        // Declare the string used to hold
+        // the decrypted text.
+        string plaintext = null;
+
+        // Create an AesCryptoServiceProvider object
+        // with the specified key and IV.
+        using (AesCryptoServiceProvider aesAlg = new AesCryptoServiceProvider())
+        {
+            aesAlg.Key = key;
+            aesAlg.Mode = CipherMode.ECB;
+            aesAlg.Padding = PaddingMode.PKCS7;
+
+            // Create a decryptor to perform the stream transform.
+            ICryptoTransform decryptor = aesAlg.CreateDecryptor(aesAlg.Key, aesAlg.IV);
+
+            // Create the streams used for decryption.
+            using (MemoryStream msDecrypt = new MemoryStream(cipherText))
+            {
+                using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, decryptor, CryptoStreamMode.Read))
+                {
+                    using (StreamReader srDecrypt = new StreamReader(csDecrypt))
+                    {
+                        // Read the decrypted bytes from the decrypting stream
+                        // and place them in a string.
+                        plaintext = srDecrypt.ReadToEnd();
+                    }
+                }
+            }
+        }
+
+        return plaintext;
     }
 
     private static void ValidateProviderUrl(CallToXianguResponse xianguResponse)
@@ -692,4 +785,66 @@ public static class DescriptionExtension
 public class CallToXianguResponse
 {
     public string Url { get; set; }
+}
+public class PlayerInfo
+{
+    public int WebId { get; set; }
+    public string UserName { get; set; }
+    public int CustomerId { get; set; }
+    public string Ip { get; set; }
+    public string Currency { get; set; }
+    public string DisableGpId { get; set; }
+    public string GameComplianceThreshold { get; set; }
+}
+
+// Models for first API
+public class IdnGame
+{
+    public string gameId { get; set; }
+    public string name { get; set; }
+    public string image { get; set; }
+    public string game_group { get; set; }
+}
+
+// Models for second API
+public class PlatformGame
+{
+    public string GameProviderName { get; set; }
+    public int GameProviderId { get; set; }
+    public int providerId { get; set; }
+    public string providerStatus { get; set; }
+    public int GameId { get; set; }
+    public List<GameNameInfo> GameNameInfos { get; set; } = new();
+    public int GameCategory { get; set; }
+    public int NewGameType { get; set; }
+    public int Rank { get; set; }
+    public string GameCode { get; set; }
+    public string GameCode1 { get; set; }
+    public string Device { get; set; }
+    public string Platform { get; set; }
+    public string SubProvider { get; set; }
+    public bool IsEnabled { get; set; }
+    public bool IsUm { get; set; }
+    public bool IsRetired { get; set; }
+    public string Remark { get; set; }
+    public bool IsJackpot { get; set; }
+    public int Rows { get; set; }
+    public int Reels { get; set; }
+    public int Lines { get; set; }
+    public double RTP { get; set; }
+    public bool IsProvideCommission { get; set; }
+    public bool HasHedgeBet { get; set; }
+    public bool HasBuyFreeSpin { get; set; }
+    public List<string> SupportedCurrencies { get; set; } = new();
+    public List<string> BlockCountries { get; set; } = new();
+    public bool IsNewGame { get; set; }
+    public DateTime modifiedOn { get; set; }
+    public string disableReason { get; set; }
+}
+
+public class GameNameInfo
+{
+    public string Language { get; set; }
+    public string GameName { get; set; }
+    public string IconUrl { get; set; }
 }
