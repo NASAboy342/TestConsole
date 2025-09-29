@@ -14,6 +14,7 @@ using OpenQA.Selenium.Edge;
 using OpenQA.Selenium.Support.UI;
 using Org.BouncyCastle.Asn1.Mozilla;
 using Org.BouncyCastle.Crmf;
+using SixLabors.ImageSharp.Drawing;
 using System;
 using System.ComponentModel;
 using System.Data;
@@ -36,36 +37,8 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        string relativePath = "model/deepseek-coder-6.7b-instruct.Q4_K_M.gguf";
-        string basePath = AppContext.BaseDirectory;
-        string modelPath = Path.Combine(basePath, relativePath);
-
-        var modelParams = new ModelParams(modelPath)
-        {
-            ContextSize = 1000,
-            GpuLayerCount = 0,
-            
-        };
-
-        var model = LLamaWeights.LoadFromFile(modelParams);
-        using var context = model.CreateContext(modelParams);
-
-        var executor = new InteractiveExecutor(context);
-        Console.WriteLine("LLM ready. Type something.");
-
-        while (true)
-        {
-            Console.Write("> ");
-            var prompt = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(prompt)) continue;
-            
-            await foreach (var result in executor.InferAsync($"<|system|>\nYou are a helpful AI coding assistant that would come with code example.\n<|user|>\n{prompt}\n<|assistant|>\n"))
-            {
-                if(string.IsNullOrWhiteSpace(result)) break;
-                Console.Write(result);
-            }
-            Console.WriteLine();
-        }
+        var polygon = new PolygonStroke();
+        await polygon.Run();
     }
 
     private static void ValidateProviderUrl(CallToXianguResponse xianguResponse)
