@@ -36,36 +36,19 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        string relativePath = "model/deepseek-coder-6.7b-instruct.Q4_K_M.gguf";
-        string basePath = AppContext.BaseDirectory;
-        string modelPath = Path.Combine(basePath, relativePath);
-
-        var modelParams = new ModelParams(modelPath)
+        List<CancelRequest> data = [];
+        var gameProvider = "ProviderB";
+        var dealId = "356";
+        var dictionary = new Dictionary<string, List<CancelRequest>>
         {
-            ContextSize = 1000,
-            GpuLayerCount = 0,
-            
+            { "ProviderA", new List<CancelRequest> { new CancelRequest { DealId = "123" }, new CancelRequest { DealId = "456" } } },
+            { "ProviderB", data }
         };
 
-        var model = LLamaWeights.LoadFromFile(modelParams);
-        using var context = model.CreateContext(modelParams);
+        var isTrue = dictionary.TryGetValue(gameProvider, out var cancelRequests)
+           && cancelRequests.Any(x => string.Equals(x.DealId, dealId, StringComparison.OrdinalIgnoreCase));
 
-        var executor = new InteractiveExecutor(context);
-        Console.WriteLine("LLM ready. Type something.");
-
-        while (true)
-        {
-            Console.Write("> ");
-            var prompt = Console.ReadLine();
-            if (string.IsNullOrWhiteSpace(prompt)) continue;
-            
-            await foreach (var result in executor.InferAsync($"<|system|>\nYou are a helpful AI coding assistant that would come with code example.\n<|user|>\n{prompt}\n<|assistant|>\n"))
-            {
-                if(string.IsNullOrWhiteSpace(result)) break;
-                Console.Write(result);
-            }
-            Console.WriteLine();
-        }
+        Console.WriteLine(isTrue);
     }
 
     private static void ValidateProviderUrl(CallToXianguResponse xianguResponse)
@@ -692,4 +675,9 @@ public static class DescriptionExtension
 public class CallToXianguResponse
 {
     public string Url { get; set; }
+}
+
+public class CancelRequest
+{
+    public string DealId { get; set; }
 }
