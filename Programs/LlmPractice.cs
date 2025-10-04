@@ -5,45 +5,111 @@ namespace TestConsole.Programs
 {
     public class LlmPractice
     {
+        private static string _modelPath = "C:\\Users\\Asus\\Downloads\\Model.txt";
+        private static string _dataPath = "C:\\Users\\Asus\\Downloads\\Data.txt";
+        private static int _tokenizeIterateTime = 2;
         public async Task Run()
         {
-            List<UniqueLetter> tokens = Tokenization();
-            Console.WriteLine(JsonConvert.SerializeObject(tokens));
+            //RunTokenization();
+            UseTheModel();
         }
 
-        private List<UniqueLetter> Tokenization()
+        private void UseTheModel()
         {
-            var tokenizeIterateTime = 30;
-            var corpus = GetCorpus();
-            tokenizeIterateTime = corpus.Count;
-            var vocabulary = GetSeperatedLettersFromCorpus(corpus);
-            var tokens = GetLettersAppearInCorpus(vocabulary);
-            for (var tokenizeTime = 1; tokenizeTime <= tokenizeIterateTime; tokenizeTime++)
+            while (true)
             {
-                var pairLetterCount = GetPairLetterCount(vocabulary);
-                var morstCountedLetters = GetMorstCountedLetters(pairLetterCount);
-                AddMorstCountPairLettersIntoVocabulary(morstCountedLetters, vocabulary);
-                UpdateToken(pairLetterCount, tokens);
+                Console.Clear();
+                var models = GetModel();
+                Console.Write("What is you init:");
+                var initalize = Console.ReadLine() ?? string.Empty;
+                DoPrediction(models, 100, initalize);
+                Console.ReadKey();
+            }
+        }
+
+        private void RunTokenization()
+        {
+            List<PairCorpus> tokens = Tokenization();
+            using var writer = new StreamWriter(_modelPath);
+            var json = JsonConvert.SerializeObject(tokens, Formatting.Indented);
+            writer.Write(json);
+        }
+
+        private void DoPrediction(List<PairCorpus> models, int iteration, string initalize)
+        {
+            var predictions = new List<string>();
+            predictions.Add(initalize);
+
+            for (int i = 1; i < iteration; i++)
+            {
+                var lastToken = predictions[i-1] ?? string.Empty;
+
+                var possibleNext = models
+                    .Where(m => m.FirstPart == lastToken)
+                    .OrderByDescending(m => m.Count)
+                    .ToList();
+
+                if (possibleNext.Count == 0)
+                    break;
+
+                var next = new PairCorpus();
+                if(possibleNext.Count > 1)
+                {
+                    var isTakeTheSecondIndex = new Random().Next(0, 10) <= 8;
+                    next = isTakeTheSecondIndex ? possibleNext[1] : possibleNext[0];
+                }
+                else
+                {
+                    next = possibleNext.First();
+                }
+
+                string toAppend = next.SecondPart ?? "";
+
+                predictions.Add(toAppend);
             }
 
+            Console.Write("Prediction: ");
+            foreach (var prediction in predictions)
+            {
+                Console.Write(prediction + " ");
+            }
+        }
+
+        private List<PairCorpus> GetModel()
+        {
+            using var reader = new StreamReader(_modelPath);
+            var content = reader.ReadToEnd();
+            var models = JsonConvert.DeserializeObject<List<PairCorpus>>(content) ?? new List<PairCorpus>();
+            return models;
+        }
+
+        private List<PairCorpus> Tokenization()
+        {
+            var tokenizeIterateTime = _tokenizeIterateTime;
+            var corpus = GetCorpus();
+            tokenizeIterateTime = corpus.Count;
+            var tokens = new List<PairCorpus>();
+            for( int iteration = 0; iteration < tokenizeIterateTime-1; iteration++)
+            {
+                var pairCorpus = new PairCorpus()
+                {
+                    Count = 1,
+                    FirstPart = corpus[iteration].ToLower(),
+                    SecondPart = corpus[iteration + 1].ToLower()
+                };
+                var existingPair = tokens.FirstOrDefault(t => t.FirstPart == pairCorpus.FirstPart && t.SecondPart == pairCorpus.SecondPart);
+                if (existingPair != null)
+                {
+                    existingPair.Count++;
+                }
+                else
+                {
+                    tokens.Add(pairCorpus);
+                }
+            }
             return tokens;
         }
 
-        private void UpdateToken(List<UniqueLetter> pairLetterCount, List<UniqueLetter> tokens)
-        {
-            var topCountedPair = pairLetterCount.OrderByDescending(p => p.Count).FirstOrDefault();
-            if (topCountedPair == null)
-                return;
-            var firstPartMarch = tokens.FirstOrDefault(token => token.Character.Equals(topCountedPair.FirstPart));
-            firstPartMarch.Count -= topCountedPair.Count;
-
-            var secondPartMarch = tokens.FirstOrDefault(token => token.Character.Equals(topCountedPair.SecondPart));
-            secondPartMarch.Count -= topCountedPair.Count;
-
-            tokens.Add(topCountedPair);
-            tokens.RemoveAll(token => token.Count == 0);
-            tokens = tokens.OrderBy(token => token.Character).ToList();
-        }
 
         private void AddMorstCountPairLettersIntoVocabulary(string morstCountedLetters, List<List<string>> vocabulary)
         {
@@ -68,66 +134,6 @@ namespace TestConsole.Programs
             }
         }
 
-        private string GetMorstCountedLetters(List<UniqueLetter> pairLetterCount)
-        {
-            return pairLetterCount.OrderByDescending(pairLetterCount => pairLetterCount.Count).FirstOrDefault()?.Character ?? string.Empty;
-        }
-
-        private List<UniqueLetter> GetPairLetterCount(List<List<string>> lettersSeperatedWords)
-        {
-            var uniqueLetters = new List<UniqueLetter>();
-            foreach (var word in lettersSeperatedWords)
-            {
-                for(var letterIndex = 0; letterIndex < word.Count; letterIndex++)
-                {
-                    var letter = word[letterIndex];
-                    if (letterIndex < 1)
-                        continue;
-
-                    var pairLetter = word[letterIndex - 1] + letter;
-                    CheckIfToCountOrAdd(uniqueLetters, pairLetter, word[letterIndex - 1], letter);
-                }
-            }
-
-            return uniqueLetters.OrderByDescending(uniqueLetter => uniqueLetter.Count).ToList();
-        }
-
-        private static void CheckIfToCountOrAdd(List<UniqueLetter> uniqueLetters, string letter, string firstPart, string secondPart)
-        {
-            if (!uniqueLetters.Any(uniqueLetter => uniqueLetter.Character.Equals(letter)))
-            {
-                uniqueLetters.Add(new UniqueLetter
-                {
-                    Character = letter,
-                    Count = 1,
-                    FirstPart = firstPart,
-                    SecondPart = secondPart
-                });
-            }
-            else
-            {
-                var martchUniqueLetter = uniqueLetters.FirstOrDefault(uniqueLetter => uniqueLetter.Character.Equals(letter));
-                if (martchUniqueLetter != null)
-                {
-                    martchUniqueLetter.Count++;
-                }
-            }
-        }
-
-        private List<UniqueLetter> GetLettersAppearInCorpus(List<List<string>> lettersSeperatedWords)
-        {
-            var uniqueLetters = new List<UniqueLetter>();
-            foreach (var word in lettersSeperatedWords)
-            {
-                foreach (var letter in word)
-                {
-                    CheckIfToCountOrAdd(uniqueLetters, letter, letter, "");
-                }
-            }
-            
-            return uniqueLetters.OrderByDescending(uniqueLetter => uniqueLetter.Count).ToList();
-        }
-
         private static List<List<string>> GetSeperatedLettersFromCorpus(List<string> corpus)
         {
             var words = new List<List<string>>();
@@ -145,15 +151,15 @@ namespace TestConsole.Programs
 
         private static List<string> GetCorpus()
         {
-            var data = "In 50 F.E. (\"Foundation Era\"), the Encyclopedia Foundation, tasked with preserving the Empire's knowledge, is established on the mineral-poor agricultural planet Terminus, and occupies the planet's single large settlement, Terminus City. The city's affairs are managed by its first Mayor, Salvor Hardin, under the authority of the Board, hidebound scholars whose main concern is publishing the Encyclopedia. Hardin believes Terminus is in danger of conquest by the four neighboring prefectures of the Empire, the strongest of which is Anacreon. When the Board resists Hardin's efforts against the threat, he and his chief advisor, Yohan Lee, seize power. Hardin then visits the three weaker kingdoms and convinces them that they must unite to prevent the Foundation's nuclear technology from falling into the hands of Anacreon alone. The three issue a joint ultimatum that all be allowed to receive nuclear power from Terminus, making it indispensable to all and protected by a delicate balance of power. A vault containing Seldon's recorded messages opens, and reveals that he had planned this whole course of events by means of psychohistory, and that the Foundation is destined to grow into a new galactic empire.";
+            using var reader = new StreamReader(_dataPath);
+            var data = reader.ReadToEnd();
             var corpus = data.Split(' ').ToList();
             return corpus;
         }
     }
 
-    public class UniqueLetter
+    public class PairCorpus
     {
-        public string Character { get; set; }
         public int Count { get; set; }
         public string? FirstPart { get; set; }
         public string? SecondPart { get; set; }
