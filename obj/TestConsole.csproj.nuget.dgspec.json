@@ -114,6 +114,10 @@
               "target": "Package",
               "version": "[1.0.0, )"
             },
+            "YoutubeExplode": {
+              "target": "Package",
+              "version": "[6.5.4, )"
+            },
             "YummyConsole": {
               "target": "Package",
               "version": "[1.0.6468.21037, )"

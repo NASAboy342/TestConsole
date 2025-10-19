@@ -44,6 +44,7 @@
     <PackageReference Include="Spectre.Console" Version="0.48.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
     <PackageReference Include="WindowFormExtended" Version="1.0.0" />
+    <PackageReference Include="YoutubeExplode" Version="6.5.4" />
     <PackageReference Include="YummyConsole" Version="1.0.6468.21037" />
   </ItemGroup>
 

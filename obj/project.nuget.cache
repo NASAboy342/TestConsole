@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "SpMK6dUxqKs=",
+  "dgSpecHash": "HjcJJR8NORs=",
   "success": true,
   "projectFilePath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
   "expectedPackageFiles": [
+    "/Users/pinsopheaktra/.nuget/packages/anglesharp/1.2.0/anglesharp.1.2.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/aspose.cells/24.8.0/aspose.cells.24.8.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/asyncenumerator/4.0.2/asyncenumerator.4.0.2.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/bouncycastle.cryptography/2.3.1/bouncycastle.cryptography.2.3.1.nupkg.sha512",
@@ -117,6 +118,7 @@
     "/Users/pinsopheaktra/.nuget/packages/system.io.filesystem/4.3.0/system.io.filesystem.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.io.filesystem.primitives/4.3.0/system.io.filesystem.primitives.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.io.packaging/6.0.0/system.io.packaging.6.0.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.io.pipelines/9.0.1/system.io.pipelines.9.0.1.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.linq/4.3.0/system.linq.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.memory/4.5.5/system.memory.4.5.5.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.net.http/4.3.4/system.net.http.4.3.4.nupkg.sha512",
@@ -150,14 +152,16 @@
     "/Users/pinsopheaktra/.nuget/packages/system.security.permissions/6.0.0/system.security.permissions.6.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.text.encoding/4.3.0/system.text.encoding.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.text.encoding.codepages/5.0.0/system.text.encoding.codepages.5.0.0.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/system.text.encodings.web/8.0.0/system.text.encodings.web.8.0.0.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/system.text.json/8.0.0/system.text.json.8.0.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.text.encodings.web/9.0.1/system.text.encodings.web.9.0.1.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.text.json/9.0.1/system.text.json.9.0.1.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.text.regularexpressions/4.3.1/system.text.regularexpressions.4.3.1.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.threading/4.3.0/system.threading.4.3.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.threading.tasks/4.3.0/system.threading.tasks.4.3.0.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/system.threading.tasks.extensions/4.6.0/system.threading.tasks.extensions.4.6.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/system.windows.extensions/6.0.0/system.windows.extensions.6.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/windowformextended/1.0.0/windowformextended.1.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/xlparser/1.5.2/xlparser.1.5.2.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/youtubeexplode/6.5.4/youtubeexplode.6.5.4.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/yummyconsole/1.0.6468.21037/yummyconsole.1.0.6468.21037.nupkg.sha512"
   ],
   "logs": [

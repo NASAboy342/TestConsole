@@ -36,19 +36,18 @@ internal class Program
 {
     private static async Task Main(string[] args)
     {
-        List<CancelRequest> data = [];
-        var gameProvider = "ProviderB";
-        var dealId = "356";
-        var dictionary = new Dictionary<string, List<CancelRequest>>
+        var _stakeMultiplyRate = 10;
+        var _tileCount = 15;
+        var tileValues = new List<decimal>
         {
-            { "ProviderA", new List<CancelRequest> { new CancelRequest { DealId = "123" }, new CancelRequest { DealId = "456" } } },
-            { "ProviderB", data }
+            (decimal)_stakeMultiplyRate / 100m
         };
-
-        var isTrue = dictionary.TryGetValue(gameProvider, out var cancelRequests)
-           && cancelRequests.Any(x => string.Equals(x.DealId, dealId, StringComparison.OrdinalIgnoreCase));
-
-        Console.WriteLine(isTrue);
+        for (var i = 1; i < _tileCount; i++)
+        {
+            tileValues.Add((tileValues[i - 1] * 100 * 2) / 100);
+        }
+        
+        Console.WriteLine(JsonConvert.SerializeObject(tileValues));
     }
 
     private static void ValidateProviderUrl(CallToXianguResponse xianguResponse)
