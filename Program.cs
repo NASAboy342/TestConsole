@@ -39,6 +39,13 @@ internal class Program
     private static async Task Main(string[] args)
     {
         using var httpClient = new HttpClient();
+        
+        // Add browser-like headers to avoid 403 Forbidden errors
+        httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+        httpClient.DefaultRequestHeaders.Add("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8");
+        httpClient.DefaultRequestHeaders.Add("Accept-Language", "en-US,en;q=0.9");
+        httpClient.DefaultRequestHeaders.Add("Referer", "https://storage.dc-ace.com/");
+        
         var providerId = 1096;
         var providerGames = await GetProviderGames(httpClient);
         var allGamesFromLandopia = await CallToLandopiaToGetAllGames(httpClient, providerId);
@@ -48,7 +55,17 @@ internal class Program
 
     private static async Task<List<ProviderGame>?> GetProviderGames(HttpClient httpClient)
     {
-        // Implementation to fetch provider games
+        var file = File.ReadAllText("/Users/pinsopheaktra/Downloads/Untitled-1.json");
+        var hacksawGames = JsonConvert.DeserializeObject<GameResponse>(file);
+        var providerGames = hacksawGames?.Data
+            .Select(g => new ProviderGame
+            {
+                gameId = g.GameId.ToString(),
+                name = g.GameName,
+                image = g.GameIcon
+            })
+            .ToList();
+        return providerGames;
     }
 
     private static async Task ProccessGameIcon(HttpClient httpClient, List<ProviderGame>? providerGames, int providerId, Dictionary<string, List<PlatformGame>>? allGamesFromLandopia)
@@ -67,9 +84,12 @@ internal class Program
             {
                 Console.WriteLine($"- {game.GameId}: {gamenameinfo.GameName} ({game.GameCode})");
                 var url = providerGames.FirstOrDefault(g => g.gameId == game.GameCode)?.image ?? "";
-                if (!string.IsNullOrEmpty(url))
+                if (string.IsNullOrEmpty(url))
                 {
-                    try
+                    Console.WriteLine($"No image URL found for GameId {game.GameId}");
+                    continue;
+                }
+                try
                     {
                         var downloadsFolder = GetFolder(providerName, game);
                         var fileName = GetFileName(game, gamenameinfo);
@@ -86,7 +106,6 @@ internal class Program
                     {
                         Console.WriteLine($"Failed to download image for GameId {game.GameId}: {ex.Message}");
                     }
-                }
             }
         }
     }
