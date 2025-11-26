@@ -7,8 +7,13 @@ public class Program
 {
     public static async Task Main()
     {
-        var utopiaHacksawGaming = new UtopiaHacksawGaming();
-        var gameId = 68;
-        await utopiaHacksawGaming.TestAllCurrencyByGameDemo(gameId);
+        var balance = 123.45600000000000m;
+        var formattedBalance = GetProviderDecimalFormat(balance);
+        Console.WriteLine(formattedBalance);
+    }
+    private static decimal GetProviderDecimalFormat(decimal balance)
+    {
+        // 6 decimal places
+        return Math.Round(balance, 6);
     }
 }
