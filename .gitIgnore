@@ -9,3 +9,5 @@ obj/
 obj/Debug/net7.0/TestConsole.AssemblyInfo.cs
 obj/Debug/net7.0/TestConsole.AssemblyInfo.cs
 obj/Debug/net7.0/TestConsole.AssemblyInfoInputs.cache
+
+model/deepseek-coder-6.7b-instruct.Q4_K_M.gguf

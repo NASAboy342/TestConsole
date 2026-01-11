@@ -42,9 +42,12 @@ internal class Program
 
         var modelParams = new ModelParams(modelPath)
         {
-            ContextSize = 1000,
-            GpuLayerCount = 0,
-            
+            ContextSize = 500,
+            GpuLayerCount = -1, // Use -1 to offload all layers to GPU, or specify exact number
+            UseMemorymap = true, // Enable memory mapping for better performance
+            UseMemoryLock = false, // Disable memory locking to allow GPU usage
+            MainGpu = 0, // Specify which GPU to use (0 for first GPU)
+            BatchSize = 512, // Batch size for GPU processing
         };
 
         var model = LLamaWeights.LoadFromFile(modelParams);
@@ -53,19 +56,37 @@ internal class Program
         var executor = new InteractiveExecutor(context);
         Console.WriteLine("LLM ready. Type something.");
 
+        var isFirst = true;
+        var lastWord = "";
+        var breakingToken = "<|user|>";
+
         while (true)
         {
             Console.Write("> ");
             var prompt = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(prompt)) continue;
             
-            await foreach (var result in executor.InferAsync($"<|system|>\nYou are a helpful AI coding assistant that would come with code example.\n<|user|>\n{prompt}\n<|assistant|>\n"))
+            await foreach (var result in executor.InferAsync(isFirst? $"<|system|>\nYou are a helpful AI coding assistant that would come with code example.\n<|user|>\n{prompt}\n<|assistant|>\n" : $"{prompt}\n<|assistant|>\n"))
             {
-                if(string.IsNullOrWhiteSpace(result)) break;
+                if (IsHitBreakIngWord(lastWord, result, breakingToken, out lastWord)) break;
                 Console.Write(result);
             }
             Console.WriteLine();
+            isFirst = false;
         }
+    }
+
+    private static bool IsHitBreakIngWord(string lastWord1, string result, string breakingToken, out string? lastWord2)
+    {
+        lastWord1 += result;
+        if (lastWord1.Equals(breakingToken))
+        {
+            lastWord2 = "";
+            return true;
+        }
+        lastWord2 = lastWord1 + result;
+        lastWord2 = lastWord2.Length > breakingToken.Length? lastWord1.Substring(1, breakingToken.Length) : lastWord2;
+        return false;
     }
 
     private static void ValidateProviderUrl(CallToXianguResponse xianguResponse)

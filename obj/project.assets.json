@@ -666,6 +666,34 @@
           }
         }
       },
+      "LLamaSharp.Backend.OpenCL/0.13.0": {
+        "type": "package",
+        "build": {
+          "build/netstandard2.0/LLamaSharp.Backend.OpenCL.props": {}
+        },
+        "runtimeTargets": {
+          "runtimes/linux-x64/native/clblast/libllama.so": {
+            "assetType": "native",
+            "rid": "linux-x64"
+          },
+          "runtimes/linux-x64/native/clblast/libllava_shared.so": {
+            "assetType": "native",
+            "rid": "linux-x64"
+          },
+          "runtimes/win-x64/native/clblast/clblast.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x64/native/clblast/llama.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          },
+          "runtimes/win-x64/native/clblast/llava_shared.dll": {
+            "assetType": "native",
+            "rid": "win-x64"
+          }
+        }
+      },
       "log4net/2.0.14": {
         "type": "package",
         "dependencies": {
@@ -3611,6 +3639,24 @@
         "runtimes/win-x64/native/noavx/ggml.dll",
         "runtimes/win-x64/native/noavx/llama.dll",
         "runtimes/win-x64/native/noavx/llava_shared.dll"
+      ]
+    },
+    "LLamaSharp.Backend.OpenCL/0.13.0": {
+      "sha512": "N5o4QPbxA3aQL9aIGKukurTgZRx0XAdURhxUc3DINOuBqAj2d5rF0z7hs8RWLE5oDRUwCRUXtm8onh+gAp2axA==",
+      "type": "package",
+      "path": "llamasharp.backend.opencl/0.13.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "build/netstandard2.0/LLamaSharp.Backend.OpenCL.props",
+        "icon512.png",
+        "llamasharp.backend.opencl.0.13.0.nupkg.sha512",
+        "llamasharp.backend.opencl.nuspec",
+        "runtimes/linux-x64/native/clblast/libllama.so",
+        "runtimes/linux-x64/native/clblast/libllava_shared.so",
+        "runtimes/win-x64/native/clblast/clblast.dll",
+        "runtimes/win-x64/native/clblast/llama.dll",
+        "runtimes/win-x64/native/clblast/llava_shared.dll"
       ]
     },
     "log4net/2.0.14": {
@@ -9467,6 +9513,7 @@
       "IEnumerable.ForEach >= 1.0.0",
       "LLamaSharp >= 0.24.0",
       "LLamaSharp.Backend.Cpu >= 0.24.0",
+      "LLamaSharp.Backend.OpenCL >= 0.13.0",
       "LibGit2Sharp >= 0.31.0",
       "MiNET >= 1.0.2304",
       "Microsoft.Extensions.Hosting >= 8.0.0",
@@ -9481,26 +9528,34 @@
     ]
   },
   "packageFolders": {
-    "/Users/pinsopheaktra/.nuget/packages/": {}
+    "C:\\Users\\Asus\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {},
+    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
+      "projectUniqueName": "D:\\Clones\\TestConsole\\TestConsole.csproj",
       "projectName": "TestConsole",
-      "projectPath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
-      "packagesPath": "/Users/pinsopheaktra/.nuget/packages/",
-      "outputPath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/obj/",
+      "projectPath": "D:\\Clones\\TestConsole\\TestConsole.csproj",
+      "packagesPath": "C:\\Users\\Asus\\.nuget\\packages\\",
+      "outputPath": "D:\\Clones\\TestConsole\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages",
+        "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+      ],
       "configFilePaths": [
-        "/Users/pinsopheaktra/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\Asus\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
-        "/usr/local/share/dotnet/library-packs": {},
-        "http://nuget.remotes.local/nuget/": {},
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -9552,6 +9607,10 @@
           "LLamaSharp.Backend.Cpu": {
             "target": "Package",
             "version": "[0.24.0, )"
+          },
+          "LLamaSharp.Backend.OpenCL": {
+            "target": "Package",
+            "version": "[0.13.0, )"
           },
           "LibGit2Sharp": {
             "target": "Package",
@@ -9614,7 +9673,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.301/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.300/PortableRuntimeIdentifierGraph.json"
       }
     }
   },
