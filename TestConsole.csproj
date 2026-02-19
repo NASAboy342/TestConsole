@@ -41,13 +41,16 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="NPOI" Version="2.7.1" />
     <PackageReference Include="Selenium.WebDriver" Version="4.34.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
     <PackageReference Include="Spectre.Console" Version="0.48.0" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.1" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.3.1" />
     <PackageReference Include="WindowFormExtended" Version="1.0.0" />
     <PackageReference Include="YummyConsole" Version="1.0.6468.21037" />
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Enums/" />
     <Folder Include="model\" />
   </ItemGroup>
 

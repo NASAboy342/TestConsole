@@ -1,6 +1,10 @@
 using System;
 using System.Net.Http.Json;
+using System.Security.Policy;
+using System.Text;
+using DocumentFormat.OpenXml.InkML;
 using Newtonsoft.Json;
+using TestConsole.Helper;
 using TestConsole.model;
 
 namespace TestConsole.Programs;
@@ -8,10 +12,19 @@ namespace TestConsole.Programs;
 public class UtopiaTestLogin
 {
     private readonly int _providerId = 1099;
-    private static readonly string _utopiaUrl = "https://capi-uat-indialotto.csmc-api.com";
-    // private readonly List<string> providerSupportedCurrency = new List<string> { "AED", "AFN", "ALL", "AMD", "AOA", "ARS", "AZN", "BAM", "BDT", "BGN", "BND", "BOB", "BRL", "BWP", "BYN", "CAD", "CDF", "CHF", "CLP", "CNY", "COP", "CRC", "CZK", "DKK", "DOP", "DZD", "EGP", "ETB", "EUR", "GBP", "GEL", "GHS", "GNF", "GTQ", "HKD", "HNL", "HTG", "HUF", "IDO", "IDR", "ILS", "INR", "IQD", "ISK", "JOD", "JPY", "KES", "KGS", "KHR", "KRW", "KWD", "KZT", "LAK", "LBP", "LKR", "LRD", "LSL", "MAD", "MDL", "MKD", "MNT", "MWK", "MXN", "MYR", "MZN", "NAD", "NGN", "NIO", "NOK", "NPR", "NZD", "PEN", "PHP", "PKR", "PLN", "PYG", "QAR", "RON", "RSD", "RUB", "RWF", "SAR", "SEK", "THB", "TJS", "TMT", "TND", "TRY", "TTD", "TZS", "UAH", "UGX", "USD", "UYU", "UZS", "VES", "VND", "VNO", "XAF", "XOF", "ZAR" };
-    private readonly List<string> providerSupportedCurrency = new List<string> { "INR" };
+    private readonly string _utopiaUrl = "https://capi-uat-indialotto.csmc-api.com";
+    private readonly List<string> providerSupportedCurrency = new List<string> { "TMP", "INR", "AED", "AUD", "BDT", "BND", "CNY", "EGP", "ETB", "EUR", "GBP", "HKD", "IDR", "IDO", "ILS", "JPY", "KES", "KHR", "KZT", "LAK", "LKR", "MAD", "MMK", "MMO", "MVR", "MYR", "NGN", "NOK", "NPR", "OMR", "PGK", "PHP", "PKR", "RUB", "SAR", "SEK", "THB", "TND", "TRY", "USDT", "UZS", "VND", "VNO", "ZAR", "ZMW", "XOF" };
+    private readonly object _lockSetLoginResult = new object();
 
+
+    public UtopiaTestLogin(int providerId = 1099, string utopiaUrl = null)
+    {
+        _providerId = providerId;
+        if (!string.IsNullOrEmpty(utopiaUrl))
+        {
+            _utopiaUrl = utopiaUrl;
+        }
+    }
     private readonly List<AccountInfo> accountInfosOnDemo = new()
     {
         new AccountInfo{ Username = "qatestaed",    WebId =2033,    CustomerId = 521754,    Currency = "AED" },
@@ -196,6 +209,133 @@ public class UtopiaTestLogin
         }
         Console.WriteLine("All done!");
     }
+    public async Task TestAllGameAndAllOfItsCurrencyDemo(int startFromGameId = 0)
+    {
+        var arpiaApiHelper = new ArpiaApiHelper();
+        var gameListFromArpia = await arpiaApiHelper.GetAllGamesAsync(_providerId);
+        // var gameListResponse = await GetAllGameFromMirana();
+        var loginResults = new List<TestLoginResult>();
+        foreach (var game in gameListFromArpia.Data.Games.Where(g => startFromGameId == 0 || g.GameId >= startFromGameId).OrderBy(g => g.GameId))
+        {
+            var tasks = new List<Task>();
+            Console.WriteLine($"Testing GameId: {game.GameId}=====================================================================================");
+            foreach (var currency in game.SupportedCurrencies)
+            {
+                tasks.Add(TesGameAndItsCurrencyDemo(currency, game, loginResults));
+            }
+            await Task.WhenAll(tasks);
+            Console.WriteLine("----------------------------------------------------------------------------------------------\n");
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+        Console.WriteLine("saving file...");
+        ExcelHelper.WriteDataTableToExcel(DataTableHelper.ToDataTable(loginResults), $"/Users/pinsopheaktra/Downloads/LoginAllGamesAllCurrencies_UtopiaDemo{DateTime.Now:yyyyMMddHHmmss}.xlsx");
+        Console.WriteLine("All done!");
+    }
+
+    private async Task TesGameAndItsCurrencyDemo(string currency, ArpiaGame game, List<TestLoginResult> loginResults)
+    {
+        var outputString = new StringBuilder();
+        if (currency == null)
+        {
+            outputString.AppendLine($"No currency found for GameId {game.GameId}\n");
+            SetLoginResult(loginResults, "Failed", game.GameId, currency, "", "No currency found", 1, game.GameCode, game.Provider);
+            return;
+        }
+        AccountInfo? account = accountInfosOnDemo.Find(a => a.Currency == currency);
+        if (account == null)
+        {
+            outputString.AppendLine($"No account found for currency {currency}\n");
+            SetLoginResult(loginResults, "Failed", game.GameId, currency, "", "No account found", 1, game.GameCode, game.Provider);
+            return;
+        }
+        var username = $"{account.WebId}SBONS{account.CustomerId}";
+        var customerId = account.CustomerId;
+        var accountId = $"{account.WebId}yy_{account.Username}";
+        try
+        {
+            var loginResponse = await CallLogin(username, customerId, accountId, game.GameId, currency);
+            outputString.AppendLine($"Testing GameId: {game.GameId} for Currency: {currency}=====================================================================\n");
+            if (loginResponse.IsSuccess && !loginResponse.Result.Contains("mainopia-uat", StringComparison.OrdinalIgnoreCase))
+            {
+                outputString.AppendLine($"Login Success! For GameId {game.GameId} Launch URL: {loginResponse.Result}\n");
+                SetLoginResult(loginResults, "Success", game.GameId, currency, loginResponse.Result, "", 0, game.GameCode, game.Provider);
+            }
+            else
+            {
+                outputString.AppendLine($"Login Failed! For GameId {game.GameId} ErrorCode: {loginResponse.ErrorCode}, ErrorMessage: {loginResponse.ErrorMessage} Launch URL: {loginResponse.Result}\n");
+                SetLoginResult(loginResults, "Failed", game.GameId, currency, loginResponse.Result, loginResponse.ErrorMessage, loginResponse.ErrorCode, game.GameCode, game.Provider);
+            }
+        }
+        catch (Exception ex)
+        {
+            outputString.AppendLine($"Exception for GameId {game.GameId} Currency {currency}: {ex.Message}\n");
+            SetLoginResult(loginResults, "Exception", game.GameId, currency, "", ex.Message, 1, game.GameCode, game.Provider);
+        }
+
+        outputString.AppendLine("----------------------------------------------------------------------------------------------\n");
+        Console.WriteLine(outputString.ToString());
+    }
+
+    private void SetLoginResult(List<TestLoginResult> loginResults, string status , int gameID, string? currency, string url, string message, int errorCode, string gameCode, string provider)
+    {
+        lock (_lockSetLoginResult)
+        {
+            loginResults.Add(new TestLoginResult
+            {
+                GameId = gameID,
+                GameCode = gameCode,
+                Provider = provider,
+                Currency = currency,
+                ErrorMessage = message,
+                ErrorCode = errorCode,
+                LaunchUrl = url,
+                Status = status
+            });
+        }
+    }
+
+    public async Task TestAllGameByOneOfItsCurrencyDemo()
+    {
+        var gameListResponse = await GetAllGameFromMirana();
+        foreach (var game in gameListResponse.SeamlessGameProviderGames)
+        {
+            var currency = game.SupportedCurrencies.FirstOrDefault();
+            if (currency == null)
+            {
+                Console.WriteLine($"No currency found for GameId {game.GameID}");
+                continue;
+            }
+            var account = accountInfosOnDemo.Find(a => a.Currency == currency);
+            if (account == null)
+            {
+                Console.WriteLine($"No account found for currency {currency}");
+                continue;
+            }
+            var username = $"{account.WebId}SBONS{account.CustomerId}";
+            var customerId = account.CustomerId;
+            var accountId = $"{account.WebId}yy_{account.Username}";
+            try
+            {
+                var loginResponse = await CallLogin(username, customerId, accountId, game.GameID, currency);
+                Console.WriteLine($"Testing GameId: {game.GameID} for Currency: {currency}=====================================================================");
+                if (loginResponse.IsSuccess && !loginResponse.Result.Contains("mainopia-uat", StringComparison.OrdinalIgnoreCase))
+                {
+                    Console.WriteLine($"Login Success! For GameId {game.GameID} Launch URL: {loginResponse.Result}");
+                }
+                else
+                {
+                    Console.WriteLine($"Login Failed! For GameId {game.GameID} ErrorCode: {loginResponse.ErrorCode}, ErrorMessage: {loginResponse.ErrorMessage} Launch URL: {loginResponse.Result}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception for GameId {game.GameID} Currency {currency}: {ex.Message}");
+            }
+
+            Console.WriteLine("----------------------------------------------------------------------------------------------");
+        }
+        Console.WriteLine("All done!");
+    }
 
     internal async Task TestAllGameByCurrencyDemo(string currency)
     {
@@ -212,14 +352,14 @@ public class UtopiaTestLogin
             var accountId = $"{account.WebId}yy_{account.Username}";
 
             var loginResponse = await CallLogin(username, customerId, accountId, gameId, currency);
-            Console.WriteLine($"Testing GameId: {gameId} for Currency: {currency}=====================================================================");
+            Console.WriteLine($"Testing GameId: {gameId}    for Currency: {currency}=====================================================================");
             if (loginResponse.IsSuccess)
             {
-                Console.WriteLine($"Login Success! For GameId {gameId} Launch URL: {loginResponse.Result}");
+                Console.WriteLine($"Login Success!  For GameId {gameId} Launch URL: {loginResponse.Result}");
             }
             else
             {
-                Console.WriteLine($"Login Failed! ErrorCode: {loginResponse.ErrorCode}, ErrorMessage: {loginResponse.ErrorMessage}");
+                Console.WriteLine($"Login Failed!   ErrorCode: {loginResponse.ErrorCode}, ErrorMessage: {loginResponse.ErrorMessage}");
             }
             Console.WriteLine("----------------------------------------------------------------------------------------------");
         }
@@ -249,7 +389,7 @@ public class UtopiaTestLogin
         return gameListResponse;
     }
 
-    private static async Task<LoginResponse> CallLogin(string username, int customerId, string accountId, int gameId, string currency)
+    private async Task<LoginResponse> CallLogin(string username, int customerId, string accountId, int gameId, string currency)
     {
         var loginRequest = new LoginRequest()
         {
@@ -257,7 +397,7 @@ public class UtopiaTestLogin
             ProcessLoginModel = new ProcessLoginModel
             {
                 GameId = gameId,
-                GpId = 1096,
+                GpId = _providerId,
                 Lang = 1,
                 IsPlayForReal = true,
                 FpId = 0,
@@ -316,10 +456,29 @@ public class UtopiaTestLogin
     }
 }
 
+internal class UtopiaApiHelper
+{
+    public UtopiaApiHelper()
+    {
+    }
+}
+
 internal class MiranaGetGameListRequest
 {
     public int GpId { get; set; }
     public bool IsGetAll { get; set; }
     public string CompanyKey { get; set; }
     public string ServerId { get; set; }
+}
+
+public class TestLoginResult
+{
+    public string Status { get; set; } = "";
+    public int GameId { get; set; } = 0;
+    public string GameCode { get; set; } = "";
+    public string Provider { get; set; } = "";
+    public string Currency { get; set; } = "";
+    public string LaunchUrl { get; set; } = "";
+    public string ErrorMessage { get; set; } = "";
+    public int ErrorCode { get; set; } = 0;
 }

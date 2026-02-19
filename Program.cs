@@ -8,7 +8,10 @@ public class Program
 {
     public static async Task Main()
     {
-        var utopiatest = new UtopiaTestLogin();
-        await utopiatest.TestAllGameByCurrencyDemo("INR");
+        // var utopiaTestLogin = new UtopiaTestLogin(1102, "https://capi-uat-qtech.csmc-api.com");
+        // await utopiaTestLogin.TestAllGameAndAllOfItsCurrencyDemo();
+
+        var gameListHelper = new GamelistHelper();
+        await gameListHelper.Run();
     }
 }
