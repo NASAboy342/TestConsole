@@ -12,19 +12,25 @@ public class GamelistHelper
 {
     internal async Task Run()
     {
-        var gmsSessionToken = "e8fd848417564";
-        var prodUrl = "http://gms-api.remotes.local";
-        var gMSHelper = new GMSHelper(gmsSessionToken, prodUrl);
-        var allGameInfoFromGMS = await gMSHelper.GetAllGameAsync(1102);
-        foreach(var game in allGameInfoFromGMS.Data.Games.OrderBy(g => g.GameId))
-        {
-            Console.WriteLine($"Updating game {game.GameId} in GMS...");
-            game.IsEnabled = false;
-            game.DisableReason = "Not support in Asia region.";
-            game.Remark = "Not support in Asia region.";
-            await gMSHelper.UpdateGameToGMSByGame(game);
-            Console.WriteLine($"Finished updating game {game.GameId} in GMS.");
-        }
+        // var gmsSessionToken = "e8fd848417564";
+        // var prodUrl = "http://gms-api.remotes.local";
+        // var gMSHelper = new GMSHelper(gmsSessionToken, prodUrl);
+
+        // var allGameInfoFromGMSAsia = await gMSHelper.GetAllGameAsync(1102);
+
+        // var allGameInfoFromGMSsa = await gMSHelper.GetAllGameAsync(1102, true);
+
+        // foreach(var game in allGameInfoFromGMSsa.Data.Games.OrderBy(g => g.GameId))
+        // {
+        //     Console.WriteLine($"Updating game {game.GameId} in GMS...");
+        //     var asiaGame = allGameInfoFromGMSAsia.Data.Games.FirstOrDefault(g => g.GameId == game.GameId);
+        //     if (asiaGame != null)
+        //     {
+        //         game.Provider = asiaGame.Provider;
+        //     }
+        //     await gMSHelper.UpdateGameToGMSByGame(game, true);
+        //     Console.WriteLine($"Finished updating game {game.GameId} in GMS.");
+        // }
         Console.WriteLine("Finished updating game currencies in GMS.");
     }
 

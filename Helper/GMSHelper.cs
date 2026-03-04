@@ -16,13 +16,13 @@ public class GMSHelper
     }
 
 
-    public async Task<GetAllGameResponse> GetAllGameAsync(int providerId)
+    public async Task<GetAllGameResponse> GetAllGameAsync(int providerId, bool isForSA = false)
     {
         var apiHelper = new HttpHelper();
         var request = new GMSGetAllGameRequest
         {
             ProviderId = providerId,
-            isForSA = false,
+            IsForSA = isForSA,
             SessionToken = _sessionToken
         };
 
@@ -139,11 +139,11 @@ public class GMSHelper
         Console.WriteLine($"Successfully to update game {JsonConvert.SerializeObject(response)}");
     }
 
-    internal async Task UpdateGameToGMSByGame(GameFromGMS game)
+    internal async Task UpdateGameToGMSByGame(GameFromGMS game, bool isForSA = false)
     {
         var gMSUpdateGameRequest = new GMSUpdateGameRequest
         {
-            IsForSA = false,
+            IsForSA = isForSA,
             BlockedCountries = game.BlockedCountries,
             Device = game.Device,
             DisableReason = game.DisableReason,
