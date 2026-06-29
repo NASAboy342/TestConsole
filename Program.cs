@@ -1,17 +1,14 @@
 ﻿
-using System.Text;
-using DocumentFormat.OpenXml.Drawing;
+using System.Globalization;
 using Newtonsoft.Json;
+using TestConsole.Helper;
 using TestConsole.Programs;
 
 public class Program
 {
     public static async Task Main()
     {
-        // var utopiaTestLogin = new UtopiaTestLogin(1102, "https://capi-uat-qtech.csmc-api.com");
-        // await utopiaTestLogin.TestAllGameAndAllOfItsCurrencyDemo();
-
-        // var gameListHelper = new GamelistHelper();
-        // await gameListHelper.Run();
+        var ollama = new OllamaClient();
+        await ollama.Run();
     }
 }

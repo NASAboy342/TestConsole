@@ -12,26 +12,50 @@ public class GamelistHelper
 {
     internal async Task Run()
     {
-        // var gmsSessionToken = "e8fd848417564";
+        var gmsSessionToken = "c12e42a7c9414";
+        var uatUrl = "http://gms-api-uat.remotes.local";
+        var gMSHelperUat = new GMSHelper(gmsSessionToken, uatUrl);
+        Console.WriteLine("Getting all game info from GMS...");
+        var allGameOnDemo = await gMSHelperUat.GetAllGameAsync(1025);
+        Console.WriteLine($"Finished getting all game info from GMS. Total games: {allGameOnDemo.Data.Games.Count}");
+        // var providerInfo = await gMSHelper.GetProviderInfoAsync(1058);
+
+
+        // var gmsSessionTokenProd = "e8fd848417564";
         // var prodUrl = "http://gms-api.remotes.local";
-        // var gMSHelper = new GMSHelper(gmsSessionToken, prodUrl);
+        // var gMSHelperProd = new GMSHelper(gmsSessionTokenProd, prodUrl);
+        // Console.WriteLine("Getting all game info from GMS...");
+        // var allGameOnProd = await gMSHelperProd.GetAllGameAsync(1025);
+        // Console.WriteLine($"Finished getting all game info from GMS. Total games: {allGameOnProd.Data.Games.Count}");
 
-        // var allGameInfoFromGMSAsia = await gMSHelper.GetAllGameAsync(1102);
+        var availableGameCodes = new List<string> { "fbbl","fbbjl","cml","tgcsl","ubal","fbrol","bs_pokl","bs_bal","cbjl","chel","nc_bal","bal","frol","frofl","rodzl","aogjbrol","cspljpt","3brgl","bfbl","abwl","7eml","abl","dtl" };
+        
 
-        // var allGameInfoFromGMSsa = await gMSHelper.GetAllGameAsync(1102, true);
-
-        // foreach(var game in allGameInfoFromGMSsa.Data.Games.OrderBy(g => g.GameId))
-        // {
-        //     Console.WriteLine($"Updating game {game.GameId} in GMS...");
-        //     var asiaGame = allGameInfoFromGMSAsia.Data.Games.FirstOrDefault(g => g.GameId == game.GameId);
-        //     if (asiaGame != null)
-        //     {
-        //         game.Provider = asiaGame.Provider;
-        //     }
-        //     await gMSHelper.UpdateGameToGMSByGame(game, true);
-        //     Console.WriteLine($"Finished updating game {game.GameId} in GMS.");
-        // }
-        Console.WriteLine("Finished updating game currencies in GMS.");
+        foreach(var game in allGameOnDemo.Data.Games.OrderBy(g => g.GameId))
+        {
+            Console.WriteLine($"update game {game.GameId} {game.GameCode} in GMS...");
+            if (game != null)
+            {
+                if (availableGameCodes.Contains(game.GameCode))
+                {
+                    game.IsEnabled = true;
+                    game.IsRetired = false;
+                    game.IsUnderMaintain = false;
+                    game.DisableReason = string.Empty;
+                }
+                else
+                {
+                    game.IsEnabled = false;
+                    game.IsRetired = false;
+                    game.IsUnderMaintain = false;
+                    game.Remark += "| This game is not available on Demo from provider.";
+                }
+            }
+            await gMSHelperUat.UpdateGameToGMSByGame(game);
+            Console.WriteLine($"Finished adding game {game.GameId} {game.GameCode} in GMS.");
+            Console.WriteLine("--------------------------------------------------");
+        }
+        Console.WriteLine("Finished adding game currencies in GMS.");
     }
 
     
@@ -129,4 +153,6 @@ public class GamelistHelper
         var qtechGamelist = Newtonsoft.Json.JsonConvert.DeserializeObject<QtechGameResponse>(json);
         return qtechGamelist;
     }
+
+    
 }

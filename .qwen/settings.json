@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//path/to/**)"
+    ]
+  },
+  "$version": 4
+}
