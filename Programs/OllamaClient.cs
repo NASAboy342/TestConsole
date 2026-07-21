@@ -12,12 +12,23 @@ public class OllamaClient
     private const int _contextLength = 40960;
     private int _promptEvalCount = 0;
     private int _evalCount = 0;
+    private readonly string _isYesKeyWord = "YES";
+    private readonly string _isNoKeyWord = "NO";
+    private readonly string _toolsInstruction = "Currently no tool is available yet.";
     private List<OllamaMessage> _messages = new List<OllamaMessage>();
 
     public OllamaClient()
     {
         _httpClient = new HttpClient();
+        _toolsInstruction = GetToolsInstructions();
     }
+
+    private string GetToolsInstructions()
+    {
+        
+        throw new NotImplementedException();
+    }
+
     public async Task Run()
     {
         while(true)
@@ -25,8 +36,21 @@ public class OllamaClient
             var userInput = GetUserInput();
             var questionRequest = GenerateUserQuestionRequest(userInput);
             _messages.Add(await GetAnswer(questionRequest));
+            await ValidateAgentResponse();
             if (IsNearContextLimit()) await SummarizeConversation();
         }
+    }
+
+    private async Task ValidateAgentResponse()
+    {
+        var validationPrompt = new List<OllamaMessage>
+        {
+            new OllamaMessage
+            {
+                Role = "system",
+                Content = $"You are an expert in validating an AI agent response. Please validate if the last response of the agent is satisfied to what the user's ask? if Yes please response only '{_isYesKeyWord}'. If not please help to suggest or reminde the agent to take other approche to satisfy the user's ask. If the agent need to do anything that some of these tool could provide, please provide these tool to the agent. The tools are: '{_toolsInstruction}'"
+            }
+        };
     }
 
     private async Task SummarizeConversation()

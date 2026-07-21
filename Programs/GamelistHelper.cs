@@ -16,43 +16,26 @@ public class GamelistHelper
         var uatUrl = "http://gms-api-uat.remotes.local";
         var gMSHelperUat = new GMSHelper(gmsSessionToken, uatUrl);
         Console.WriteLine("Getting all game info from GMS...");
-        var allGameOnDemo = await gMSHelperUat.GetAllGameAsync(1025);
+        var allGameOnDemo = await gMSHelperUat.GetAllGameAsync(1104);
         Console.WriteLine($"Finished getting all game info from GMS. Total games: {allGameOnDemo.Data.Games.Count}");
         // var providerInfo = await gMSHelper.GetProviderInfoAsync(1058);
 
 
-        // var gmsSessionTokenProd = "e8fd848417564";
-        // var prodUrl = "http://gms-api.remotes.local";
-        // var gMSHelperProd = new GMSHelper(gmsSessionTokenProd, prodUrl);
-        // Console.WriteLine("Getting all game info from GMS...");
-        // var allGameOnProd = await gMSHelperProd.GetAllGameAsync(1025);
-        // Console.WriteLine($"Finished getting all game info from GMS. Total games: {allGameOnProd.Data.Games.Count}");
+        var gmsSessionTokenProd = "8f358ef66af64";
+        var prodUrl = "http://gms-api.remotes.local";
+        var gMSHelperProd = new GMSHelper(gmsSessionTokenProd, prodUrl);
+        Console.WriteLine("Getting all game info from GMS...");
+        var allGameOnProd = await gMSHelperProd.GetAllGameAsync(1104);
+        Console.WriteLine($"Finished getting all game info from GMS. Total games: {allGameOnProd.Data.Games.Count}");
 
-        var availableGameCodes = new List<string> { "fbbl","fbbjl","cml","tgcsl","ubal","fbrol","bs_pokl","bs_bal","cbjl","chel","nc_bal","bal","frol","frofl","rodzl","aogjbrol","cspljpt","3brgl","bfbl","abwl","7eml","abl","dtl" };
-        
 
-        foreach(var game in allGameOnDemo.Data.Games.OrderBy(g => g.GameId))
+        foreach(var game in allGameOnProd.Data.Games.OrderBy(g => g.GameId))
         {
-            Console.WriteLine($"update game {game.GameId} {game.GameCode} in GMS...");
-            if (game != null)
-            {
-                if (availableGameCodes.Contains(game.GameCode))
-                {
-                    game.IsEnabled = true;
-                    game.IsRetired = false;
-                    game.IsUnderMaintain = false;
-                    game.DisableReason = string.Empty;
-                }
-                else
-                {
-                    game.IsEnabled = false;
-                    game.IsRetired = false;
-                    game.IsUnderMaintain = false;
-                    game.Remark += "| This game is not available on Demo from provider.";
-                }
-            }
-            await gMSHelperUat.UpdateGameToGMSByGame(game);
-            Console.WriteLine($"Finished adding game {game.GameId} {game.GameCode} in GMS.");
+            Console.WriteLine($"Adding game currency for game: {game.GameId} - {game.GameLanguages.FirstOrDefault()?.GameName}");
+
+
+            await gMSHelperUat.AddGame(new GMSAddGameRequest(game));
+            Console.WriteLine($"Finished adding game currency for game: {game.GameId} - {game.GameLanguages.FirstOrDefault()?.GameName}");
             Console.WriteLine("--------------------------------------------------");
         }
         Console.WriteLine("Finished adding game currencies in GMS.");

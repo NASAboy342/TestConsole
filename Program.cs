@@ -1,14 +1,14 @@
-﻿
-using System.Globalization;
-using Newtonsoft.Json;
-using TestConsole.Helper;
+
+using System.Net;
+using System.Text.RegularExpressions;
+using Spectre.Console;
 using TestConsole.Programs;
 
 public class Program
 {
     public static async Task Main()
     {
-        var ollama = new OllamaClient();
-        await ollama.Run();
+        var aitherBlockIpTester = new AitherBlockIpTester();
+        await aitherBlockIpTester.Run();
     }
 }
