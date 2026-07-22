@@ -169,7 +169,7 @@ public class AitherBlockIpTester
 
             var row = new[]
             {
-                $"[{result.Category}] {result.Endpoint}",
+                $"[[{result.Category}]] {result.Endpoint}",
                 "POST",
                 "403 Forbidden",
                 $"{result.Actual}",
@@ -245,7 +245,7 @@ public class AitherBlockIpTester
             var status = result.IsAllowed ? "✓ WORKS" : "✗ FAIL";
 
             table.AddRow(
-                $"[{result.Category}] {result.Endpoint}",
+                $"[[{result.Category}]] {result.Endpoint}",
                 "200 OK",
                 $"{result.Actual}",
                 $"{result.TimeMs}ms",
@@ -536,9 +536,11 @@ public class AitherBlockIpTester
         var config = new AppConfig();
         foreach (var arg in args)
         {
-            if (arg.StartsWith("--aitherUrl="))
+            if (arg.StartsWith("--aitherUrl=") || arg.StartsWith("--url="))
             {
-                config.AitherUrl = arg.Substring("--aitherUrl=".Length);
+                config.AitherUrl = arg.StartsWith("--url=")
+                    ? arg.Substring("--url=".Length)
+                    : arg.Substring("--aitherUrl=".Length);
             }
             else if (arg.StartsWith("--testBlock="))
             {
