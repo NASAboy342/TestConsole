@@ -1,6 +1,7 @@
 using System;
 using System.Text;
 using Newtonsoft.Json;
+using NPOI.SS.Formula.Functions;
 
 namespace TestConsole.Programs;
 
@@ -12,9 +13,10 @@ public class OllamaClient
     private const int _contextLength = 40960;
     private int _promptEvalCount = 0;
     private int _evalCount = 0;
-    private readonly string _isYesKeyWord = "YES";
-    private readonly string _isNoKeyWord = "NO";
+    private readonly string _yesKeyWord = "YES";
+    private readonly string _noKeyWord = "NO";
     private readonly string _toolsInstruction = "Currently no tool is available yet.";
+    private OllamaMessage _lastValidationResponse;
     private List<OllamaMessage> _messages = new List<OllamaMessage>();
 
     public OllamaClient()
@@ -25,8 +27,7 @@ public class OllamaClient
 
     private string GetToolsInstructions()
     {
-        
-        throw new NotImplementedException();
+        return _toolsInstruction;
     }
 
     public async Task Run()
@@ -36,21 +37,32 @@ public class OllamaClient
             var userInput = GetUserInput();
             var questionRequest = GenerateUserQuestionRequest(userInput);
             _messages.Add(await GetAnswer(questionRequest));
-            await ValidateAgentResponse();
+            _lastValidationResponse = await ValidateAgentResponse();
             if (IsNearContextLimit()) await SummarizeConversation();
         }
     }
 
-    private async Task ValidateAgentResponse()
+    private async Task<OllamaMessage> ValidateAgentResponse()
     {
-        var validationPrompt = new List<OllamaMessage>
+        var validationPrompt = new OllamaMessage
         {
-            new OllamaMessage
-            {
-                Role = "system",
-                Content = $"You are an expert in validating an AI agent response. Please validate if the last response of the agent is satisfied to what the user's ask? if Yes please response only '{_isYesKeyWord}'. If not please help to suggest or reminde the agent to take other approche to satisfy the user's ask. If the agent need to do anything that some of these tool could provide, please provide these tool to the agent. The tools are: '{_toolsInstruction}'"
-            }
+            Role = "system",
+            Content = $"You are an expert in validating an AI agent response. Your job is to do whatever it take to push the agent to complete the goal of the user's request. User's request first. The response of the agent must answer to the user's request. No alternative. No refuse. Please validate if the last response of the agent is satisfied to what the user's ask? if Yes please response only '{_yesKeyWord}'. If not yet, please help to suggest or reminde the agent to take other approche to satisfy the user's ask. If the agent need to do anything that some of these tool could provide, please provide these tool to the agent. The tools are: '{_toolsInstruction}'"
         };
+        
+        var messages = new List<OllamaMessage>();
+        messages.AddRange(_messages);
+        messages.Add(validationPrompt);
+
+        var request = new OllamaRequest
+        {
+            messages = messages,
+            model = _modelName,
+            stream = true
+        };
+
+        var validattionResponse = await GetAnswer(request);
+        return validattionResponse;
     }
 
     private async Task SummarizeConversation()
@@ -70,7 +82,7 @@ public class OllamaClient
             Content = "Please summarize the above conversation history."
         });
 
-        var summaryRequest = new
+        var summaryRequest = new OllamaRequest()
         {
             model = _modelName,
             messages = summaryPrompt,
@@ -90,21 +102,40 @@ public class OllamaClient
         };
     }
 
-    private static string? GetUserInput()
+    private string? GetUserInput()
     {
-        Console.Write(">>: ");
-        var userInput = Console.ReadLine();
-        return userInput;
+        if(!IsHasValidationMessage())
+        {    
+            Console.Write(">>: ");
+            var userInput = Console.ReadLine();
+            return userInput;
+        }
+        else
+        {
+            return "";
+        }
     }
 
-    private global::System.Object GenerateUserQuestionRequest(string? input)
+    private OllamaRequest GenerateUserQuestionRequest(string? input)
     {
-        _messages.Add(new OllamaMessage
+        if (IsHasValidationMessage())
         {
-            Role = "user",
-            Content = input ?? string.Empty
-        });
-        return new
+            _messages.Add(new OllamaMessage
+            {
+                Role = "system",
+                Content = _lastValidationResponse.Content
+            });
+        }
+        else
+        {
+            _messages.Add(new OllamaMessage
+            {
+                Role = "user",
+                Content = input ?? string.Empty
+            });
+        }
+
+        return new OllamaRequest
         {
             model = _modelName,
             messages = _messages,
@@ -112,7 +143,12 @@ public class OllamaClient
         };
     }
 
-    private async Task<OllamaMessage> GetAnswer(global::System.Object request, bool isShow = true)
+    private bool IsHasValidationMessage()
+    {
+        return _lastValidationResponse != null && !_lastValidationResponse.Content.Equals(_yesKeyWord, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<OllamaMessage> GetAnswer(OllamaRequest request, bool isShow = true)
     {
         var json = JsonConvert.SerializeObject(request);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -146,7 +182,7 @@ public class OllamaClient
             else if (!string.IsNullOrEmpty(chunk?.Message?.Thinking))
             {
                 responseMessage.Thinking += chunk.Message.Thinking;
-                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.BackgroundColor = ConsoleColor.DarkYellow;
                 Write(chunk.Message.Thinking);
                 Console.ResetColor();
             }
@@ -281,4 +317,11 @@ public class OllamaTopLogprob
 
     [JsonProperty("bytes")]
     public List<int> Bytes { get; set; }
+}
+
+public class OllamaRequest
+{
+    public string model {get; set;}
+    public List<OllamaMessage> messages {get; set;}
+    public bool stream {get; set;} = true;
 }
