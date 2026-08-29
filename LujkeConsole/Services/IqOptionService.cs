@@ -61,16 +61,12 @@ public class IqOptionService
     private static long _localTimeOrigin = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
     private int _requestSeq;
     private TaskCompletionSource<bool>? _authTcs;
-    private string? _firstCandlesRequestId;
-    private int _liveCandleCount;
 
     public EventHandler<IQOptionCandle>? OnCandleUpdated;
 
     public List<IQOptionCandle> LiveCandles { get; set; } = new();
 
     public EventHandler<string>? OnError;
-
-    public List<string> LogMessages { get; set; } = new();
 
     public EventHandler<string>? OnLogMessage;
 
@@ -116,8 +112,14 @@ public class IqOptionService
 
     private async Task SubscribeToTheLiveCandleStream(ClientWebSocket ws)
     {
-        // ── 2. Subscribe to the live candle stream (quotes.candle-generated) ──────
-        var liveSubscribe = new SubscribeMessageEnvelope
+        var request = CreateLiveCandleSubscription();
+        await SendRawAsync(ws, JsonConvert.SerializeObject(request));
+        Log($"Subscribed to live candle stream: active_id={ActiveId}, size={(int)CandleSize}s");
+    }
+
+    private SubscribeMessageEnvelope CreateLiveCandleSubscription()
+    {
+        return new SubscribeMessageEnvelope
         {
             Msg = new SubscribeMessageBody
             {
@@ -135,8 +137,6 @@ public class IqOptionService
             RequestId = NextRequestId(),
             LocalTime = LocalTimeMs()
         };
-        await SendRawAsync(ws, JsonConvert.SerializeObject(liveSubscribe));
-        Log($"Subscribed to live candle stream: active_id={ActiveId}, size={(int)CandleSize}s");
     }
 
     private async Task HistoricalCandle(ClientWebSocket ws)
@@ -144,7 +144,6 @@ public class IqOptionService
         // ── 1. Historical candles (get-first-candles: needs ONLY active_id) ───────
         var firstCandles = new QuotesHistoryGetFirstCandlesRequest(ActiveId);
         var firstCandlesId = NextRequestId();
-        _firstCandlesRequestId = firstCandlesId;
         await SendRawAsync(ws, JsonConvert.SerializeObject(
             SocketSendMessageEnvelope.Wrap(firstCandles, firstCandlesId, LocalTimeMs())));
         Log($"Sent quotes-history.get-first-candles for active_id={ActiveId}");
@@ -249,67 +248,27 @@ public class IqOptionService
                 ms.Write(buffer, 0, result.Count);
             } while (!result.EndOfMessage);
 
-            var text = Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length);
-            await HandleIncomingFrame(text);
+            HandleIncomingFrame(Encoding.UTF8.GetString(ms.GetBuffer(), 0, (int)ms.Length));
         }
     }
 
-    private async Task HandleIncomingFrame(string raw)
+    private void HandleIncomingFrame(string raw)
     {
-        // Telemetry/echo traffic we don't care about right now
-        if (raw.Contains("\"resource\":\"events") || raw.Contains("\"resource\":\"ping"))
-        {
+        if (IsIgnorableFrame(raw))
             return;
-        }
 
-        // Fast-path: signal the authenticate handshake completion
         if (raw.Contains("\"name\":\"authenticated\""))
         {
-            Log($"[auth] server replied: {Truncate(raw, 200)}");
-            _authTcs?.TrySetResult(raw.Contains("\"msg\":true"));
+            HandleAuthenticationResponse(raw);
             return;
         }
-
-        // High-frequency heartbeat — suppress to keep the log readable
-        if (raw.Contains("\"name\":\"timeSync\"")) return;
 
         Log($"[recv] {Truncate(raw, 500)}");
 
-        // Parse the generic envelope {name, msg, request_id, ...}
         try
         {
             var envelope = JsonConvert.DeserializeObject<SocketEnvelopeGeneric>(raw);
-            if (envelope?.Msg is null) return;
-
-            // (A) LIVE tick pushed per candle: top-level name == "candle-generated"
-            if (envelope.Name == "candle-generated")
-            {
-                var c = JsonConvert.DeserializeObject<IQOptionCandle>(
-                    JsonConvert.SerializeObject(envelope.Msg));
-                if (c is not null) UpdateLiveCandle(c);
-                return;
-            }
-
-            // (B) HISTORICAL batch reply: top-level name == "candles", msg = {"candles":[...]}
-            //     confirmed reply: {"request_id":"request_49","name":"candles","msg":{"candles":[]},"status":2000}
-            if (envelope.Name == "candles")
-            {
-                var response = JsonConvert.DeserializeObject<GetCandlesResponse>(
-                    JsonConvert.SerializeObject(envelope.Msg));
-                if (response?.Candles is { Count: > 0 } candles)
-                {
-                    Log($"── history (get-first-candles): {candles.Count} candle(s) ──");
-                    var toPrint = candles.Take(HistoricalCandleCount);
-                    foreach (var cc in toPrint) UpdateLiveCandle(cc);
-                    if (candles.Count > HistoricalCandleCount)
-                        Log($"    … {candles.Count - HistoricalCandleCount} more");
-                }
-                else
-                {
-                    Log($"── history reply: {response?.Candles?.Count ?? 0} candle(s) (empty?) ──");
-                }
-                return;
-            }
+            RouteIncomingEnvelope(envelope);
         }
         catch (JsonException ex)
         {
@@ -317,9 +276,63 @@ public class IqOptionService
         }
     }
 
+    private static bool IsIgnorableFrame(string raw) =>
+        raw.Contains("\"resource\":\"events") ||
+        raw.Contains("\"resource\":\"ping") ||
+        raw.Contains("\"name\":\"timeSync\"");
+
+    private void HandleAuthenticationResponse(string raw)
+    {
+        Log($"[auth] server replied: {Truncate(raw, 200)}");
+        _authTcs?.TrySetResult(raw.Contains("\"msg\":true"));
+    }
+
+    private void RouteIncomingEnvelope(SocketEnvelopeGeneric? envelope)
+    {
+        if (envelope?.Msg is null)
+            return;
+
+        switch (envelope.Name)
+        {
+            case "candle-generated":
+                HandleLiveCandle(envelope.Msg);
+                break;
+            case "candles":
+                HandleHistoricalCandles(envelope.Msg);
+                break;
+        }
+    }
+
+    private void HandleLiveCandle(object message)
+    {
+        var candle = DeserializeMessage<IQOptionCandle>(message);
+        if (candle is not null)
+            UpdateLiveCandle(candle);
+    }
+
+    private void HandleHistoricalCandles(object message)
+    {
+        var response = DeserializeMessage<GetCandlesResponse>(message);
+        var candles = response?.Candles;
+        if (candles is not { Count: > 0 })
+        {
+            Log($"── history reply: {candles?.Count ?? 0} candle(s) (empty?) ──");
+            return;
+        }
+
+        Log($"── history (get-first-candles): {candles.Count} candle(s) ──");
+        foreach (var candle in candles.Take(HistoricalCandleCount))
+            UpdateLiveCandle(candle);
+
+        if (candles.Count > HistoricalCandleCount)
+            Log($"    … {candles.Count - HistoricalCandleCount} more");
+    }
+
+    private static T? DeserializeMessage<T>(object message) =>
+        JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(message));
+
     private void Log(string message)
     {
-        LogMessages.Add(message);
         OnLogMessage?.Invoke(this, message);
     }
 
@@ -330,8 +343,16 @@ public class IqOptionService
 
     private void UpdateLiveCandle(IQOptionCandle c)
     {
-        LiveCandles.Add(c);
-        _liveCandleCount++;
+        var existingIndex = LiveCandles.FindIndex(candle => candle.Id == c.Id);
+        if (existingIndex >= 0)
+        {
+            LiveCandles[existingIndex] = c;
+        }
+        else
+        {
+            LiveCandles.Add(c);
+        }
+
         OnCandleUpdated?.Invoke(this, c);
     }
 
@@ -351,7 +372,8 @@ public class IqOptionService
 public enum EnumMarketAssetId
 {
     Gold = 1912,
-    EURUSD = 1861
+    EURUSD = 1861,
+    AppleOTC = 1938,
 }
 
 
@@ -570,48 +592,8 @@ public class SocketPingFrame
 /// </summary>
 public class GetCandlesResponse
 {
-    [JsonProperty("name")]
-    public string? Name { get; set; }
-
-    [JsonProperty("request_id")]
-    public string? RequestId { get; set; }
-
-    [JsonProperty("active_id")]
-    public int? ActiveId { get; set; }
-
-    [JsonProperty("size")]
-    public int? Size { get; set; }
-
     [JsonProperty("candles")]
     public List<IQOptionCandle>? Candles { get; set; }
-
-    [JsonProperty("error")]
-    public string? Error { get; set; }
-
-    [JsonProperty("body")]
-    public GetCandlesResponseBody? Body { get; set; }
-
-    /// <summary>Flattened accessor: candles from either .candles or .body.candles.</summary>
-    [JsonIgnore]
-    public List<IQOptionCandle>? EffectiveCandles => Candles ?? Body?.Candles;
-
-    [JsonIgnore]
-    public string? EffectiveError => Error ?? Body?.Error;
-}
-
-public class GetCandlesResponseBody
-{
-    [JsonProperty("active_id")]
-    public int? ActiveId { get; set; }
-
-    [JsonProperty("size")]
-    public int? Size { get; set; }
-
-    [JsonProperty("candles")]
-    public List<IQOptionCandle>? Candles { get; set; }
-
-    [JsonProperty("error")]
-    public string? Error { get; set; }
 }
 
 /// <summary>

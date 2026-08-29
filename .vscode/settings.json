@@ -1,3 +1,4 @@
 {
-    "dotnet.defaultSolution": "LujkeConsole.sln"
+    "dotnet.defaultSolution": "LujkeConsole.sln",
+    "csharp.debug.console": "integratedTerminal"
 }

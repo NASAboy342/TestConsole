@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        
+        {
+            "name": "C#: LujkeConsole",
+            "type": "dotnet",
+            "request": "launch",
+            "projectPath": "${workspaceFolder}/LujkeConsole/LujkeConsole.csproj",
+            "launchConfigurationId": "TargetFramework=;LujkeConsole",
+        }
+    ]
+}
