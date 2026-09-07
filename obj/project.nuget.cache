@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "xcRO7DmLn6U=",
+  "dgSpecHash": "ij7g1RFAxNk=",
   "success": true,
   "projectFilePath": "/Users/pinsopheaktra/Documents/Clones/TestConsole/TestConsole.csproj",
   "expectedPackageFiles": [
@@ -159,7 +159,10 @@
     "/Users/pinsopheaktra/.nuget/packages/system.windows.extensions/6.0.0/system.windows.extensions.6.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/windowformextended/1.0.0/windowformextended.1.0.0.nupkg.sha512",
     "/Users/pinsopheaktra/.nuget/packages/xlparser/1.5.2/xlparser.1.5.2.nupkg.sha512",
-    "/Users/pinsopheaktra/.nuget/packages/yummyconsole/1.0.6468.21037/yummyconsole.1.0.6468.21037.nupkg.sha512"
+    "/Users/pinsopheaktra/.nuget/packages/yummyconsole/1.0.6468.21037/yummyconsole.1.0.6468.21037.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/microsoft.netcore.app.ref/8.0.30/microsoft.netcore.app.ref.8.0.30.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.30/microsoft.aspnetcore.app.ref.8.0.30.nupkg.sha512",
+    "/Users/pinsopheaktra/.nuget/packages/microsoft.netcore.app.host.osx-arm64/8.0.30/microsoft.netcore.app.host.osx-arm64.8.0.30.nupkg.sha512"
   ],
   "logs": [
     {
